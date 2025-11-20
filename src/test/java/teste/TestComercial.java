@@ -3,7 +3,6 @@ package teste;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebDriver;
@@ -105,7 +104,7 @@ public class TestComercial {
 
             // ETAPA 9: OBSERVAÇÃO
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 9: Preenchendo observação     ║");
+            log.info("║  ETAPA 9: Preenchendo observação      ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.preencherObservacaoInterna("Teste automação - "
                     + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
@@ -117,6 +116,23 @@ public class TestComercial {
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.preencherObservacaoExterna("Testando automação");
             log.info("✓ Observação OK\n");
+
+            // ETAPA 11: FRETE
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ETAPA 11: Preenchendo frete          ║");
+            log.info("╚═══════════════════════════════════════╝");
+            comercialPage.preencherFrete("150");
+            log.info("✓ Frete OK\n");
+
+
+            // ETAPA 12: SALVAR PROPOSTA
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ETAPA 12: Salvando proposta          ║");
+            log.info("╚═══════════════════════════════════════╝");
+
+            String codigoProposta = comercialPage.salvarProposta();
+
+            log.info("✓ Proposta salva! Código: {}\n", codigoProposta);
 
             log.info("╔═══════════════════════════════════════╗");
             log.info("║  ✅✅✅ TESTE CONCLUÍDO ✅✅✅         ║");
@@ -132,7 +148,7 @@ public class TestComercial {
         }
     }
 
-    @AfterEach
+    /* @AfterEach
     public void tearDown() {
         if (driver != null) {
             try {
@@ -147,5 +163,5 @@ public class TestComercial {
             driver.quit();
             log.info("Teardown concluído");
         }
-    }
+    } */
 }

@@ -74,6 +74,9 @@ public class ComercialPage {
     private final By campoUtilizacao = By.id("utilizacao");
     private final By campoObservacaoInterna = By.id("observacaoInterna");
     private final By campoObservacaoExterna = By.id("observacaoExterna");
+    private final By campoFrete = By.id("freight");
+    private final By botaoSalvar = By.xpath("//input[@type='submit' and @value='Salvar']");
+    private final By campoIdProposta = By.id("id");
 
     // ========== CONSTRUTOR ==========
     public ComercialPage(WebDriver driver) {
@@ -1105,7 +1108,6 @@ public class ComercialPage {
         }
     }
 
-    
     /**
      * Preenche o campo de observação (VERSÃO SIMPLIFICADA)
      *
@@ -1137,9 +1139,83 @@ public class ComercialPage {
         }
     }
 
+     /**
+     * Preenche o campo de frete (VERSÃO SIMPLIFICADA)
+     *
+     * @param frete Valor (ex: "150")
+     */
+    public void preencherFrete(String freight) {
+        try {
+
+            log.info("Preenchendo frete: {} valor", freight);
+
+            // Aguardar campo estar presente E visível
+            WebElement campo = wait.until(ExpectedConditions.visibilityOfElementLocated(campoFrete));
+
+            // Limpar e preencher
+            campo.clear();
+            campo.sendKeys(freight);
+
+            log.info("✓ Frete preenchido com sucesso");
+
+        } catch (Exception e) {
+            log.error("Erro ao preencher frete: {}", e.getMessage());
+
+            // DEBUG simplificado
+            log.error("DEBUG - URL: {}", driver.getCurrentUrl());
+            log.error("DEBUG - Total inputs: {}", driver.findElements(By.tagName("input")).size());
+            log.error("DEBUG - Total iframes: {}", driver.findElements(By.tagName("iframe")).size());
+
+            throw new RuntimeException("Falha ao preencher frete", e);
+        }
+    }
 
     // ========================================================================
-    // SEÇÃO 6: UTILITÁRIOS
+    // SEÇÃO 6: AÇÕES DE SALVAMENTO E CAPTURA
+    // ========================================================================
+    /**
+     * Clica no botão Salvar e aguarda o sistema gerar o código da proposta
+     *
+     * @return Código da proposta gerado pelo sistema
+     */
+    public String salvarProposta() {
+        try {
+            log.info("Clicando em Salvar...");
+
+            // Aguardar botão estar clicável
+            WebElement botao = wait.until(ExpectedConditions.elementToBeClickable(botaoSalvar));
+            botao.click();
+
+            log.info("✓ Botão Salvar clicado");
+
+            // Aguardar o campo ID ser preenchido pelo sistema (não vazio)
+            wait.until(driver -> {
+                WebElement campoId = driver.findElement(campoIdProposta);
+                String valor = campoId.getAttribute("value");
+                return valor != null && !valor.trim().isEmpty();
+            });
+
+            // Capturar o código gerado
+            String codigoProposta = driver.findElement(campoIdProposta).getAttribute("value");
+
+            log.info("✓ Proposta salva com sucesso! Código: {}", codigoProposta);
+
+            return codigoProposta;
+
+        } catch (Exception e) {
+            log.error("Erro ao salvar proposta: {}", e.getMessage());
+
+            // DEBUG simplificado
+            log.error("DEBUG - URL: {}", driver.getCurrentUrl());
+            log.error("DEBUG - Botão Salvar presente: {}",
+                    driver.findElements(botaoSalvar).size() > 0);
+            throw new RuntimeException("Falha ao salvar proposta", e);
+        }
+
+    }
+
+    // ========================================================================
+    // SEÇÃO 7: UTILITÁRIOS
     // ========================================================================
     /**
      * Aguarda um número específico de segundos
