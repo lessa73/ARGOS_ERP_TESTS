@@ -41,12 +41,11 @@ public class TestComercial {
         try {
             // ETAPA 1: LOGIN
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 1: Realizando LOGIN           ║");
+            log.info("║  ETAPA 1: Realizando LOGIN            ║");
             log.info("╚═══════════════════════════════════════╝");
 
             boolean loginSucesso = comercialPage.realizarLoginCompleto(
-                    URL_DEFAULT, USUARIO_DEFAULT, SENHA_DEFAULT
-            );
+                    URL_DEFAULT, USUARIO_DEFAULT, SENHA_DEFAULT);
 
             if (!loginSucesso) {
                 throw new RuntimeException("❌ Login falhou");
@@ -55,49 +54,49 @@ public class TestComercial {
 
             // ETAPA 2: NAVEGAÇÃO
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 2: Acessando cadastro         ║");
+            log.info("║  ETAPA 2: Acessando cadastro          ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.acessarTelaCadastro();
             log.info("✓ Tela acessada\n");
 
             // ETAPA 3: PREENCHIMENTO (SEM DEBUG NO MEIO!)
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 3: Preenchendo prazo          ║");
+            log.info("║  ETAPA 3: Preenchendo prazo           ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.preencherPrazo("15");
             log.info("✓ Prazo OK\n");
 
             // ETAPA 4: CLIENTE
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 4: Selecionando cliente       ║");
+            log.info("║  ETAPA 4: Selecionando cliente        ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.selecionarCliente("DESTOM", "20.746.370/0001-80 - DESTOM");
             log.info("✓ Cliente OK\n");
 
             // ETAPA 5: VENDEDOR
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 5: Selecionando vendedor      ║");
+            log.info("║  ETAPA 5: Selecionando vendedor       ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.selecionarVendedor("Alex", "Alexandre Lessa (Fluxis)");
             log.info("✓ Vendedor OK\n");
 
             // ETAPA 6: UTILIZAÇÃO
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 6: Selecionando utilização    ║");
+            log.info("║  ETAPA 6: Selecionando utilização     ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.selecionarUtilizacao("Venda de produto/mercadoria");
             log.info("✓ Utilização OK\n");
 
             // ETAPA 7: OPERAÇÃO
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 7: Selecionando operação      ║");
+            log.info("║  ETAPA 7: Selecionando operação       ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.selecionarOperacao("Consumidor final");
             log.info("✓ Operação OK\n");
 
             // ETAPA 8: TABELA PREÇO
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ETAPA 8: Selecionando tabela      ║");
+            log.info("║  ETAPA 8: Selecionando tabela         ║");
             log.info("╚═══════════════════════════════════════╝");
             comercialPage.selecionarTabelaPreco("TABELA PADRAO CF - 2025");
             log.info("✓ Tabela OK\n");
@@ -124,7 +123,6 @@ public class TestComercial {
             comercialPage.preencherFrete("150");
             log.info("✓ Frete OK\n");
 
-
             // ETAPA 12: SALVAR PROPOSTA
             log.info("╔═══════════════════════════════════════╗");
             log.info("║  ETAPA 12: Salvando proposta          ║");
@@ -134,8 +132,42 @@ public class TestComercial {
 
             log.info("✓ Proposta salva! Código: {}\n", codigoProposta);
 
+            // ETAPA 13: ADICIONAR COMPONENTE
             log.info("╔═══════════════════════════════════════╗");
-            log.info("║  ✅✅✅ TESTE CONCLUÍDO ✅✅✅         ║");
+            log.info("║  ETAPA 13: Adicionando componente     ║");
+            log.info("╚═══════════════════════════════════════╝");
+
+            comercialPage.adicionarItem(
+                    "CON00032",
+                    "CON00032_01 - NX-102 - ANALISADORES SEMIAUTOMATICOS PORTATEIS OPTICOS DE COAGULACAO DE AMOSTRAS DE SANGUE TOTAL VENOSO CITRATADO VETERINARIO - EQ COAG VET - 1",
+                    "2");
+
+            // ETAPA 14: ADICIONAR SERVICO
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ETAPA 14: Adicionando SERVICO        ║");
+            log.info("╚═══════════════════════════════════════╝");
+
+            comercialPage.adicionarServico(
+                    "manutenção",
+                    "Serviços de manutenção,",
+                    "1");
+
+            // ETAPA 15: ADICIONAR CONDIÇÕES DE RECEBIMENTO
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ETAPA 15: Adicionando CONDIÇÃO       ║");
+            log.info("╚═══════════════════════════════════════╝");
+
+            comercialPage.adicionarCondicaoRecebimento(
+                    "Boleto",
+                    "BANCO SANTANDER",
+                    "28 dias");
+
+            log.info("✓ Condição adicionada OK\n");
+
+            log.info("✓ Item adicionado OK\n");
+
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ✅✅✅ TESTE CONCLUÍDO ✅✅✅     ║");
             log.info("╚═══════════════════════════════════════╝");
 
             // Aguardar visualização
@@ -148,20 +180,22 @@ public class TestComercial {
         }
     }
 
-    /* @AfterEach
-    public void tearDown() {
-        if (driver != null) {
-            try {
-                log.info("Aguardando antes de fechar o browser (para visualização)");
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                log.warn("Interrupção durante aguardo final");
-                Thread.currentThread().interrupt();
-            }
-
-            log.info("Fechando browser");
-            driver.quit();
-            log.info("Teardown concluído");
-        }
-    } */
+    /*
+     * @AfterEach
+     * public void tearDown() {
+     * if (driver != null) {
+     * try {
+     * log.info("Aguardando antes de fechar o browser (para visualização)");
+     * Thread.sleep(2000);
+     * } catch (InterruptedException e) {
+     * log.warn("Interrupção durante aguardo final");
+     * Thread.currentThread().interrupt();
+     * }
+     * 
+     * log.info("Fechando browser");
+     * driver.quit();
+     * log.info("Teardown concluído");
+     * }
+     * }
+     */
 }

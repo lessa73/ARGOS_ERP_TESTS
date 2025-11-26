@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: teste.TestComercial
 -------------------------------------------------------------------------------
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 62.56 s -- in teste.TestComercial
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 101.4 s -- in teste.TestComercial

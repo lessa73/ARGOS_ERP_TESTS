@@ -8,6 +8,7 @@ import java.util.Set;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
@@ -62,10 +63,26 @@ public class ComercialPage {
         return By.xpath("//iframe[contains(@src, 'proposta.do')]");
     }
 
-// Estratégia alternativa (caso src mude)
+    // Estratégia alternativa (caso src mude)
     private By obterLocatorIframePorPattern() {
         return By.xpath("//iframe[contains(@id, 'window_') and contains(@id, '_content')]");
     }
+
+    // ========== LOCATORS – IFRAME ASSINATURA DIGITAL (DINÂMICO) ==========
+    /**
+     * Iframe de assinatura com ID/Name dinâmico: window_TIMESTAMP_content
+     * Exemplo: window_1764175950552_content
+     * Estratégia: Localizar por src (assinatura.do)
+     */
+    private By obterLocatorIframeAssinatura() {
+        return By.xpath("//iframe[contains(@src, 'assinatura.do')]");
+    }
+
+    // ========== LOCATORS – SWEETALERT2 (POPUP) ==========
+    private final By swalPopup = By.cssSelector(".swal2-popup.swal2-show");
+    private final By swalBotaoOk = By.cssSelector("button.swal2-confirm");
+    private final By swalTitulo = By.id("swal2-title");
+    private final By swalMensagem = By.id("swal2-html-container");
 
     // ========== LOCATORS – CADASTRO DE PROPOSTA ==========
     private final By campoPrazo = By.id("prazoDias");
@@ -76,7 +93,67 @@ public class ComercialPage {
     private final By campoObservacaoExterna = By.id("observacaoExterna");
     private final By campoFrete = By.id("freight");
     private final By botaoSalvar = By.xpath("//input[@type='submit' and @value='Salvar']");
-    private final By campoIdProposta = By.id("id");
+    // private final By campoIdProposta = By.id("id");
+    private final By campoIdProposta = By.cssSelector("input[name='id']");
+    private final By campoComponente = By.id("componente");
+    private final By campoTabelaPrecoComponente = By.id("idTabelaPrecoComponente");
+    private final By campoQuantidade = By.id("componentAmount");
+    private final By botaoAdicionarComponente = By.id("pAddComponent");
+    private final By campoServico = By.id("servico");
+
+    // ========== LOCATORS – ABAS (TABS) ==========
+    private final By abaComponente = By.xpath("//div[contains(text(), 'Componente')]");
+    private final By abaServico = By.xpath("//div[contains(text(), 'Serviço')]");
+
+    // ========== LOCATORS – CADASTRO DE SERVIÇO ==========
+    private final By campoServicoQuantidade = By.id("serviceAmount");
+    private final By campoServicoPreco = By.id("servicePrice");
+    private final By botaoAdicionarServico = By.id("addService");
+
+    // Campos Select2 (clique para abrir dropdown)
+    private final By campoTipoPagamentoContainer = By.id("s2id_tipoPagamento");
+    private final By campoTipoPagamentoSpan = By.id("select2-chosen-62");
+    private final By campoTipoPagamentoSelect = By.id("tipoPagamento");
+
+    private final By campoContaCorrenteContainer = By.id("s2id_contaCorrente");
+    private final By campoContaCorrenteSpan = By.id("select2-chosen-63");
+    private final By campoContaCorrenteSelect = By.id("contaCorrente");
+
+    private final By campoCondicaoRecebimentoContainer = By.id("s2id_condicao");
+    private final By campoCondicaoRecebimentoSpan = By.id("select2-chosen-64");
+    private final By campoCondicaoRecebimentoSelect = By.id("condicao");
+
+    // ========================================================================
+    // SEÇÃO ADICIONAL: LOCATORS - ABA CONDIÇÕES E AUTORIZAÇÃO
+    // ========================================================================
+
+    // ========== LOCATORS – ABA CONDIÇÕES (Complemento) ==========
+    private final By abaCondicoes = By.xpath("//div[contains(text(), 'Condições')]");
+
+    // ========== LOCATORS – AUTORIZAÇÃO ==========
+    private final By botaoAutorizar = By.xpath("//input[@type='submit' and @value='Autorizar']");
+
+    private final By botaoAdicionarCondicao = By.id("addCondicao");
+
+    // Locator dinâmico para resultados do Select2
+    private final String select2ResultXpath = "//div[contains(@class, 'select2-result-label') and text()='%s']";
+
+    // ========== LOCATORS – FORMULÁRIO ASSINATURA ==========
+    private final By campoLoginAssinatura = By.id("login");
+    private final By campoSenhaAssinatura = By.id("password");
+    private final By botaoOkAssinatura = By.id("btnOk");
+
+    // ========== LOCATORS – POPUP DECISÃO (GERAR PEDIDO) ==========
+    private final By popupDecisaoTitulo = By.id("swal2-title");
+    private final By popupDecisaoMensagem = By.id("swal2-html-container");
+    private final By botaoOkDecisao = By.cssSelector("button.swal2-confirm");
+    private final By botaoCancelarDecisao = By.cssSelector("button.swal2-cancel");
+
+    // ========== LOCATORS – JANELA CONDIÇÕES DA PROPOSTA ==========
+    private final By janelaCondicoesTitulo = By.id("window_1764176229657_top");
+    private final By campoCondicaoProposta = By.id("idCondicao");
+    private final By campoCondicaoPropostaContainer = By.id("s2id_idCondicao");
+    private final By botaoOkCondicoesProposta = By.id("xinput834");
 
     // ========== CONSTRUTOR ==========
     public ComercialPage(WebDriver driver) {
@@ -96,9 +173,9 @@ public class ComercialPage {
     /**
      * Realiza o login completo no sistema
      *
-     * @param url URL do sistema
+     * @param url     URL do sistema
      * @param usuario Nome de usuário
-     * @param senha Senha do usuário
+     * @param senha   Senha do usuário
      * @return true se login bem-sucedido, false caso contrário
      */
     public boolean realizarLoginCompleto(String url, String usuario, String senha) {
@@ -184,8 +261,7 @@ public class ComercialPage {
         String urlAtual = driver.getCurrentUrl();
         if (urlAtual.equals("about:blank") || urlAtual.contains("login.do")) {
             throw new RuntimeException(
-                    "❌ ERRO PRÉ-CONDIÇÃO: Login não foi realizado! URL atual: " + urlAtual
-            );
+                    "❌ ERRO PRÉ-CONDIÇÃO: Login não foi realizado! URL atual: " + urlAtual);
         }
 
         WebElement menuCom = wait.until(ExpectedConditions.presenceOfElementLocated(menuComercial));
@@ -226,16 +302,15 @@ public class ComercialPage {
                 if (onmouseup != null && onmouseup.contains("cmItemMouseUp")) {
                     js.executeScript(
                             "var menuItem = arguments[0].parentElement;"
-                            + "var submenuId = 'cmSubMenuID83';"
-                            + "var submenu = document.getElementById(submenuId);"
-                            + "if (submenu) {"
-                            + "  submenu.style.visibility = 'visible';"
-                            + "  submenu.style.display = 'block';"
-                            + "  submenu.style.left = menuItem.offsetLeft + 'px';"
-                            + "  submenu.style.top = (menuItem.offsetTop + menuItem.offsetHeight) + 'px';"
-                            + "}",
-                            menuCom
-                    );
+                                    + "var submenuId = 'cmSubMenuID83';"
+                                    + "var submenu = document.getElementById(submenuId);"
+                                    + "if (submenu) {"
+                                    + "  submenu.style.visibility = 'visible';"
+                                    + "  submenu.style.display = 'block';"
+                                    + "  submenu.style.left = menuItem.offsetLeft + 'px';"
+                                    + "  submenu.style.top = (menuItem.offsetTop + menuItem.offsetHeight) + 'px';"
+                                    + "}",
+                            menuCom);
                     Thread.sleep(1000);
                     sucesso = true;
                 }
@@ -297,11 +372,10 @@ public class ComercialPage {
         log.debug("Forçando visibilidade do submenu");
         js.executeScript(
                 "var submenu = document.getElementById('cmSubMenuID35');"
-                + "if (submenu) {"
-                + "  submenu.style.visibility = 'visible';"
-                + "  submenu.style.display = 'block';"
-                + "}"
-        );
+                        + "if (submenu) {"
+                        + "  submenu.style.visibility = 'visible';"
+                        + "  submenu.style.display = 'block';"
+                        + "}");
         Thread.sleep(500);
 
         WebElement submenu = wait.until(ExpectedConditions.presenceOfElementLocated(submenuPropostaContainer));
@@ -420,8 +494,7 @@ public class ComercialPage {
             WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
             WebElement campoPrazoElement = longWait.until(
-                    ExpectedConditions.presenceOfElementLocated(campoPrazo)
-            );
+                    ExpectedConditions.presenceOfElementLocated(campoPrazo));
 
             log.debug("✓ Campo 'prazoDias' encontrado no DOM");
 
@@ -520,8 +593,7 @@ public class ComercialPage {
             By locatorDinamico = obterLocatorIframeDinamico();
 
             WebElement iframe = shortWait.until(
-                    ExpectedConditions.presenceOfElementLocated(locatorDinamico)
-            );
+                    ExpectedConditions.presenceOfElementLocated(locatorDinamico));
 
             String iframeId = iframe.getAttribute("id");
             String iframeName = iframe.getAttribute("name");
@@ -544,8 +616,7 @@ public class ComercialPage {
 
                 By locatorPorPattern = obterLocatorIframePorPattern();
                 WebElement iframe = shortWait.until(
-                        ExpectedConditions.presenceOfElementLocated(locatorPorPattern)
-                );
+                        ExpectedConditions.presenceOfElementLocated(locatorPorPattern));
 
                 log.debug("✓ Iframe encontrado por pattern: {}", iframe.getAttribute("id"));
                 return true;
@@ -709,8 +780,7 @@ public class ComercialPage {
             try {
                 WebDriverWait validacao = new WebDriverWait(driver, Duration.ofSeconds(10));
                 WebElement campoPrazoValidacao = validacao.until(
-                        ExpectedConditions.presenceOfElementLocated(By.id("prazoDias"))
-                );
+                        ExpectedConditions.presenceOfElementLocated(By.id("prazoDias")));
                 log.info("✓✓✓ CAMPO 'prazoDias' ENCONTRADO E PRONTO! ✓✓✓");
 
                 // Log de debug
@@ -756,9 +826,8 @@ public class ComercialPage {
 
         // 1. Aguardar document.readyState === 'complete'
         try {
-            wait.until((ExpectedCondition<Boolean>) wd
-                    -> js.executeScript("return document.readyState").equals("complete")
-            );
+            wait.until((ExpectedCondition<Boolean>) wd -> js.executeScript("return document.readyState")
+                    .equals("complete"));
             log.debug("✓ document.readyState = complete");
         } catch (Exception e) {
             log.warn("Não foi possível verificar document.readyState");
@@ -943,9 +1012,9 @@ public class ComercialPage {
     /**
      * Seleciona um cliente usando autocomplete
      *
-     * @param textoDigitar Texto inicial para filtrar (ex: "DESTOM")
+     * @param textoDigitar  Texto inicial para filtrar (ex: "DESTOM")
      * @param opcaoCompleta Texto completo da opção (ex: "20.746.370/0001-80 -
-     * DESTOM INDUSTRIA...")
+     *                      DESTOM INDUSTRIA...")
      */
     public void selecionarCliente(String textoDigitar, String opcaoCompleta) {
         try {
@@ -961,9 +1030,9 @@ public class ComercialPage {
     /**
      * Seleciona um vendedor/representante usando autocomplete
      *
-     * @param textoDigitar Texto inicial para filtrar (ex: "Alex")
+     * @param textoDigitar  Texto inicial para filtrar (ex: "Alex")
      * @param opcaoCompleta Texto completo da opção (ex: "Alexandre Lessa
-     * (Fluxis)")
+     *                      (Fluxis)")
      */
     public void selecionarVendedor(String textoDigitar, String opcaoCompleta) {
         try {
@@ -1060,7 +1129,7 @@ public class ComercialPage {
      * Seleciona tabela preço usando Select2 (por valor do option)
      *
      * @param valor Valor do option (ex: "0" = Normal, "170" = TABELA PADRAO CF
-     * - 2025)
+     *              - 2025)
      */
     public void selecionarTabelaPrecoPorValor(String valor) {
         try {
@@ -1139,7 +1208,7 @@ public class ComercialPage {
         }
     }
 
-     /**
+    /**
      * Preenche o campo de frete (VERSÃO SIMPLIFICADA)
      *
      * @param frete Valor (ex: "150")
@@ -1215,7 +1284,852 @@ public class ComercialPage {
     }
 
     // ========================================================================
-    // SEÇÃO 7: UTILITÁRIOS
+    // SEÇÃO 7: PREENCHIMENTO DE ITENS
+    // ========================================================================
+    /**
+     * Clica na aba Componente
+     */
+    public void clicarAbaComponente() {
+        try {
+            log.info("Clicando na aba Componente...");
+
+            WebElement aba = wait.until(ExpectedConditions.elementToBeClickable(abaComponente));
+
+            // Destacar para debug
+            destacarElemento(aba);
+
+            // Estratégia 1: Click direto
+            boolean sucesso = false;
+            try {
+                aba.click();
+                Thread.sleep(1000);
+                sucesso = true;
+            } catch (Exception e) {
+                log.debug("Click direto falhou: {}", e.getMessage());
+            }
+
+            // Estratégia 2: Click via JavaScript
+            if (!sucesso) {
+                try {
+                    js.executeScript("arguments[0].click();", aba);
+                    Thread.sleep(1000);
+                    sucesso = true;
+                } catch (Exception e) {
+                    log.debug("Click JS falhou: {}", e.getMessage());
+                }
+            }
+
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível clicar na aba Componente");
+            }
+
+            // Aguardar campos da aba Componente ficarem visíveis
+            wait.until(ExpectedConditions.visibilityOfElementLocated(campoComponente));
+
+            log.info("✓ Aba Componente ativada");
+
+        } catch (Exception e) {
+            log.error("Erro ao clicar na aba Componente: {}", e.getMessage());
+            throw new RuntimeException("Falha ao acessar aba Componente", e);
+        }
+    }
+
+    /**
+     * Clica na aba Serviço
+     */
+    public void clicarAbaServico() {
+        try {
+            log.info("Clicando na aba Serviço...");
+
+            WebElement aba = wait.until(ExpectedConditions.elementToBeClickable(abaServico));
+
+            // Destacar para debug
+            destacarElemento(aba);
+
+            // Estratégia 1: Click direto
+            boolean sucesso = false;
+            try {
+                aba.click();
+                Thread.sleep(1000);
+                sucesso = true;
+            } catch (Exception e) {
+                log.debug("Click direto falhou: {}", e.getMessage());
+            }
+
+            // Estratégia 2: Click via JavaScript
+            if (!sucesso) {
+                try {
+                    js.executeScript("arguments[0].click();", aba);
+                    Thread.sleep(1000);
+                    sucesso = true;
+                } catch (Exception e) {
+                    log.debug("Click JS falhou: {}", e.getMessage());
+                }
+            }
+
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível clicar na aba Serviço");
+            }
+
+            // Aguardar campos da aba Serviço ficarem visíveis
+            wait.until(ExpectedConditions.visibilityOfElementLocated(campoServico));
+
+            log.info("✓ Aba Serviço ativada");
+
+        } catch (Exception e) {
+            log.error("Erro ao clicar na aba Serviço: {}", e.getMessage());
+            throw new RuntimeException("Falha ao acessar aba Serviço", e);
+        }
+    }
+
+    /**
+     * Verifica se está na aba Componente
+     *
+     * @return true se o campo componente está visível
+     */
+    private boolean estaAbaComponente() {
+        try {
+            WebElement campo = driver.findElement(campoComponente);
+            return campo.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Verifica se está na aba Serviço
+     *
+     * @return true se o campo serviço está visível
+     */
+    private boolean estaAbaServico() {
+        try {
+            WebElement campo = driver.findElement(campoServico);
+            return campo.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Adiciona um item completo à proposta (componente + quantidade)
+     *
+     * @param textoDigitar  Texto inicial para filtrar (ex: "CON00032")
+     * @param opcaoCompleta Texto completo da opção (ex: "CON00032_01 -
+     *                      NX-102...")
+     * @param quantidade    Quantidade do item (ex: "2")
+     */
+    public void adicionarItem(String textoDigitar, String opcaoCompleta, String quantidade) {
+        try {
+            log.info("Adicionando item: {} | Qtd: {}", textoDigitar, quantidade);
+
+            // 0. **NOVO**: Garantir que está na aba Componente
+            if (!estaAbaComponente()) {
+                log.info("  ⚠ Não está na aba Componente, trocando...");
+                clicarAbaComponente();
+            }
+
+            // 1. Selecionar componente
+            log.info("  → Selecionando componente...");
+            selecionarComponenteManual(textoDigitar);
+            log.info("  ✓ Componente selecionado");
+
+            // 2. Aguardar sistema processar (onblur + AJAX)
+            log.info("  ⏳ Aguardando sistema processar...");
+            Thread.sleep(2000);
+
+            // 3. Forçar carregamento clicando no campo quantidade
+            log.info("  → Clicando no campo quantidade para forçar carregamento...");
+            WebElement campoQtd = wait.until(ExpectedConditions.elementToBeClickable(campoQuantidade));
+            campoQtd.click();
+            log.info("  ✓ Campo quantidade clicado");
+
+            // 4. Aguardar tabela de preço carregar
+            log.info("  ⏳ Aguardando tabela de preços...");
+            aguardarTabelaPrecoCarregar();
+            log.info("  ✓ Tabela carregada");
+
+            // 5. Preencher quantidade
+            log.info("  → Preenchendo quantidade...");
+            campoQtd.clear();
+            campoQtd.sendKeys(quantidade);
+            log.info("  ✓ Quantidade preenchida");
+
+            // 6. Clicar em Adicionar
+            log.info("  → Clicando em Adicionar...");
+            WebElement botao = wait.until(ExpectedConditions.elementToBeClickable(botaoAdicionarComponente));
+            botao.click();
+            log.info("  ✓ Botão clicado");
+
+            // 7. Detectar e fechar popup "Pronto!"
+            log.info("  ⏳ Verificando popup de confirmação...");
+            Thread.sleep(1000); // Aguardar popup aparecer
+
+            if (detectarEFecharPopup()) {
+                log.info("  ✓ Popup confirmação fechado");
+            } else {
+                log.debug("  ℹ Nenhum popup detectado (comportamento normal)");
+            }
+
+            // 8. Aguardar confirmação (campos limparem)
+            aguardarItemSerAdicionado();
+
+            log.info("✓ Item adicionado com sucesso\n");
+
+        } catch (Exception e) {
+            log.error("Erro ao adicionar item: {}", e.getMessage());
+            log.error("DEBUG - URL: {}", driver.getCurrentUrl());
+
+            // Tentar fechar popup se estiver travado
+            try {
+                if (detectarPopupSweetAlert(2)) {
+                    log.warn("⚠ Popup ainda aberto após erro, tentando fechar...");
+                    fecharPopupSweetAlert();
+                }
+            } catch (Exception e2) {
+                log.debug("Não foi possível fechar popup no tratamento de erro");
+            }
+
+            throw new RuntimeException("Falha ao adicionar item", e);
+        }
+    }
+
+    /**
+     * Seleciona componente manualmente (SEM autocompleteHelper) Uso: Se
+     * autocompleteHelper causar postback que limpa campos
+     */
+    private void selecionarComponenteManual(String textoDigitar) {
+        try {
+            WebElement campo = wait.until(ExpectedConditions.visibilityOfElementLocated(campoComponente));
+            campo.clear();
+            campo.sendKeys(textoDigitar);
+
+            Thread.sleep(1000); // Aguardar lista aparecer
+
+            campo.sendKeys(Keys.DOWN); // Selecionar primeira opção
+            campo.sendKeys(Keys.ENTER); // Confirmar
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao selecionar componente manualmente", e);
+        }
+    }
+
+    /**
+     * Seleciona componente usando autocomplete
+     */
+    private void selecionarComponente(String textoDigitar, String opcaoCompleta) {
+        try {
+            autocompleteHelper.selecionarOpcao(campoComponente, textoDigitar, opcaoCompleta);
+        } catch (Exception e) {
+            log.error("Erro ao selecionar componente via autocompleteHelper: {}", e.getMessage());
+            throw new RuntimeException("Falha ao selecionar componente", e);
+        }
+    }
+
+    /**
+     * Aguarda a tabela de preço do componente carregar
+     */
+    private void aguardarTabelaPrecoCarregar() {
+        try {
+            wait.until(driver -> {
+                try {
+                    WebElement select = driver.findElement(campoTabelaPrecoComponente);
+                    List<WebElement> opcoes = select.findElements(By.tagName("option"));
+
+                    return opcoes.stream().anyMatch(o -> {
+                        String value = o.getAttribute("value");
+                        return value != null && !value.trim().isEmpty();
+                    });
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+        } catch (Exception e) {
+            log.error("Timeout ao aguardar tabela de preço carregar");
+            throw new RuntimeException("Tabela de preço não carregou", e);
+        }
+    }
+
+    /**
+     * Aguarda o item ser adicionado à lista (campos limparem)
+     */
+    private void aguardarItemSerAdicionado() {
+        try {
+            wait.until(driver -> {
+                WebElement campo = driver.findElement(campoQuantidade);
+                String valor = campo.getAttribute("value");
+                return valor == null || valor.trim().isEmpty();
+            });
+        } catch (Exception e) {
+            log.warn("Timeout ao aguardar confirmação de item adicionado");
+        }
+    }
+
+    /**
+     * Adiciona um serviço à proposta (serviço + quantidade) ATUALIZADO: Agora
+     * trata popup SweetAlert2 "Pronto!" e garante estar na aba correta
+     *
+     * @param textoDigitar  Texto inicial para filtrar (ex: "manut")
+     * @param opcaoCompleta Texto completo da opção (ex: "Serviços de
+     *                      manutenção")
+     * @param quantidade    Quantidade do item (ex: "1")
+     */
+    public void adicionarServico(String textoDigitar, String opcaoCompleta, String quantidade) {
+        try {
+            log.info("Adicionando serviço: {} | Qtd: {}", textoDigitar, quantidade);
+
+            // 0. **CRÍTICO**: Garantir que está na aba Serviço
+            if (!estaAbaServico()) {
+                log.info("  ⚠ Não está na aba Serviço, trocando...");
+                clicarAbaServico();
+            } else {
+                log.info("  ✓ Já está na aba Serviço");
+            }
+
+            // 1. Selecionar serviço
+            log.info("  → Selecionando serviço...");
+            selecionarServicoManual(textoDigitar);
+            log.info("  ✓ Serviço selecionado");
+
+            // 2. Aguardar sistema processar (onblur + AJAX)
+            log.info("  ⏳ Aguardando sistema processar...");
+            Thread.sleep(2000);
+
+            // 3. Preencher quantidade (usando o campo correto: serviceAmount)
+            log.info("  → Preenchendo quantidade...");
+            WebElement campoQtd = wait.until(ExpectedConditions.elementToBeClickable(campoServicoQuantidade));
+            campoQtd.click(); // Forçar foco
+            campoQtd.clear();
+            campoQtd.sendKeys(quantidade);
+            log.info("  ✓ Quantidade preenchida");
+
+            // 4. (OPCIONAL) Preencher preço se necessário
+            // Se o sistema preenche automaticamente, pular esta etapa
+            // Se precisar preencher manualmente, descomentar:
+            log.info("  → Preenchendo preço...");
+            WebElement campoPreco = wait.until(ExpectedConditions.elementToBeClickable(campoServicoPreco));
+            campoPreco.click();
+            campoPreco.clear();
+            campoPreco.sendKeys("100.00"); // Substituir pelo valor correto
+            log.info("  ✓ Preço preenchido");
+
+            // 5. Clicar em Adicionar (botão específico de serviço)
+            log.info("  → Clicando em Adicionar...");
+            WebElement botao = wait.until(ExpectedConditions.elementToBeClickable(botaoAdicionarServico));
+            botao.click();
+            log.info("  ✓ Botão clicado");
+
+            // 6. Detectar e fechar popup "Pronto!"
+            log.info("  ⏳ Verificando popup de confirmação...");
+            Thread.sleep(1000); // Aguardar popup aparecer
+
+            if (detectarEFecharPopup()) {
+                log.info("  ✓ Popup confirmação fechado");
+            } else {
+                log.debug("  ℹ Nenhum popup detectado (comportamento normal)");
+            }
+
+            // 7. Aguardar confirmação (campo quantidade limpar)
+            aguardarServicoSerAdicionado();
+
+            log.info("✓ Serviço adicionado com sucesso\n");
+
+        } catch (Exception e) {
+            log.error("Erro ao adicionar serviço: {}", e.getMessage());
+            log.error("DEBUG - URL: {}", driver.getCurrentUrl());
+            log.error("DEBUG - Está na aba Serviço? {}", estaAbaServico());
+
+            // Tentar fechar popup se estiver travado
+            try {
+                if (detectarPopupSweetAlert(2)) {
+                    log.warn("⚠ Popup ainda aberto após erro, tentando fechar...");
+                    fecharPopupSweetAlert();
+                }
+            } catch (Exception e2) {
+                log.debug("Não foi possível fechar popup no tratamento de erro");
+            }
+
+            throw new RuntimeException("Falha ao adicionar serviço", e);
+        }
+    }
+
+    /**
+     * Seleciona serviço manualmente (SEM autocompleteHelper) Uso: Se
+     * autocompleteHelper causar postback que limpa campos
+     */
+    private void selecionarServicoManual(String textoDigitar) {
+        try {
+            log.debug("Aguardando campo serviço estar visível...");
+            WebElement campo = wait.until(ExpectedConditions.visibilityOfElementLocated(campoServico));
+
+            log.debug("Campo encontrado, limpando...");
+            campo.clear();
+
+            log.debug("Digitando: '{}'", textoDigitar);
+            campo.sendKeys(textoDigitar);
+
+            log.debug("Aguardando autocomplete aparecer...");
+            Thread.sleep(1500); // Aguardar lista aparecer
+
+            log.debug("Enviando tecla DOWN...");
+            campo.sendKeys(Keys.DOWN); // Selecionar primeira opção
+
+            Thread.sleep(300);
+
+            log.debug("Enviando tecla ENTER...");
+            campo.sendKeys(Keys.ENTER); // Confirmar
+
+            Thread.sleep(500);
+
+            log.debug("✓ Serviço selecionado via teclado");
+
+        } catch (Exception e) {
+            log.error("Erro ao selecionar serviço manualmente: {}", e.getMessage());
+            log.error("Campo serviço presente? {}", driver.findElements(campoServico).size() > 0);
+            log.error("Campo serviço visível? {}",
+                    driver.findElements(campoServico).stream()
+                            .findFirst()
+                            .map(WebElement::isDisplayed)
+                            .orElse(false));
+            throw new RuntimeException("Erro ao selecionar serviço manualmente", e);
+        }
+    }
+
+    /**
+     * Aguarda o serviço ser adicionado à lista (campo quantidade limpar)
+     */
+    private void aguardarServicoSerAdicionado() {
+        try {
+            log.debug("Aguardando campo quantidade (serviceAmount) limpar...");
+            wait.until(driver -> {
+                try {
+                    WebElement campo = driver.findElement(campoServicoQuantidade);
+                    String valor = campo.getAttribute("value");
+                    return valor == null || valor.trim().isEmpty();
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+            log.debug("✓ Campo quantidade limpo (serviço adicionado)");
+        } catch (Exception e) {
+            log.warn("Timeout ao aguardar confirmação de serviço adicionado");
+        }
+    }
+    // ========================================================================
+    // SEÇÃO 8: GESTÃO DA ABA CONDIÇÕES (SELECT2) ✨ REFATORADO
+    // ========================================================================
+
+    /**
+     * Clica na aba Condições
+     */
+    public void clicarAbaCondicoes() {
+        try {
+            log.info("Clicando na aba Condições...");
+
+            WebElement aba = wait.until(ExpectedConditions.elementToBeClickable(abaCondicoes));
+
+            // Destacar para debug
+            destacarElemento(aba);
+
+            // Estratégia 1: Click direto
+            boolean sucesso = false;
+            try {
+                aba.click();
+                Thread.sleep(1000);
+                sucesso = true;
+            } catch (Exception e) {
+                log.debug("Click direto falhou: {}", e.getMessage());
+            }
+
+            // Estratégia 2: Click via JavaScript
+            if (!sucesso) {
+                try {
+                    js.executeScript("arguments[0].click();", aba);
+                    Thread.sleep(1000);
+                    sucesso = true;
+                } catch (Exception e) {
+                    log.debug("Click JS falhou: {}", e.getMessage());
+                }
+            }
+
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível clicar na aba Condições");
+            }
+
+            // Aguardar campos da aba Condições ficarem visíveis
+            wait.until(ExpectedConditions.visibilityOfElementLocated(campoTipoPagamentoSelect));
+
+            log.info("✓ Aba Condições ativada");
+
+        } catch (Exception e) {
+            log.error("Erro ao clicar na aba Condições: {}", e.getMessage());
+            throw new RuntimeException("Falha ao acessar aba Condições", e);
+        }
+    }
+
+    /**
+     * Verifica se está na aba Condições
+     *
+     * @return true se o campo tipo pagamento está visível
+     */
+    private boolean estaAbaCondicoes() {
+        try {
+            WebElement campo = driver.findElement(campoTipoPagamentoSelect);
+            return campo.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Adiciona uma condição de recebimento à proposta
+     * 
+     * @param tipoPagamento       Texto da opção (ex: "Boleto", "Dinheiro", etc)
+     * @param contaCorrente       Texto da opção (ex: "BANCO SANTANDER", "CAIXA
+     *                            ECONÔMICA FEDERAL", etc)
+     * @param condicaoRecebimento Texto da opção (ex: "28 dias", "02x - 30/45", etc)
+     */
+    public void adicionarCondicaoRecebimento(String tipoPagamento, String contaCorrente, String condicaoRecebimento) {
+        try {
+            log.info("Adicionando condição de recebimento:");
+            log.info("  • Tipo: {}", tipoPagamento);
+            log.info("  • Conta: {}", contaCorrente);
+            log.info("  • Condição: {}", condicaoRecebimento);
+
+            // 0. Garantir que está na aba Condições
+            if (!estaAbaCondicoes()) {
+                log.info("  ⚠ Não está na aba Condições, trocando...");
+                clicarAbaCondicoes();
+            } else {
+                log.info("  ✓ Já está na aba Condições");
+            }
+
+            // 1. Selecionar Tipo de Pagamento
+            log.info("  → Selecionando tipo de pagamento...");
+            selecionarCampoSelect2PorTexto("tipoPagamento", tipoPagamento);
+            log.info("  ✓ Tipo de pagamento selecionado");
+
+            // Aguardar sistema processar (pode haver AJAX)
+            Thread.sleep(1500);
+
+            // 2. Selecionar Conta Corrente
+            log.info("  → Selecionando conta corrente...");
+            selecionarCampoSelect2PorTexto("contaCorrente", contaCorrente);
+            log.info("  ✓ Conta corrente selecionada");
+
+            // Aguardar sistema processar
+            Thread.sleep(1500);
+
+            // 3. Selecionar Condição de Recebimento
+            log.info("  → Selecionando condição de recebimento...");
+            selecionarCampoSelect2PorTexto("condicao", condicaoRecebimento);
+            log.info("  ✓ Condição de recebimento selecionada");
+
+            // Aguardar sistema processar
+            Thread.sleep(1500);
+
+            // 4. Clicar em Adicionar
+            log.info("  → Clicando em Adicionar...");
+            WebElement botao = wait.until(ExpectedConditions.elementToBeClickable(botaoAdicionarCondicao));
+            destacarElemento(botao);
+            botao.click();
+            log.info("  ✓ Botão clicado");
+
+            // 5. Verificar popup de confirmação
+            log.info("  ⏳ Verificando popup de confirmação...");
+            Thread.sleep(1000);
+
+            if (detectarEFecharPopup()) {
+                log.info("  ✓ Popup confirmação fechado");
+            } else {
+                log.debug("  ℹ Nenhum popup detectado (comportamento normal)");
+            }
+
+            // 6. Aguardar confirmação (campos limparem)
+            aguardarCondicaoSerAdicionada();
+
+            log.info("✓ Condição de recebimento adicionada com sucesso\n");
+
+        } catch (Exception e) {
+            log.error("Erro ao adicionar condição de recebimento: {}", e.getMessage());
+            log.error("DEBUG - URL: {}", driver.getCurrentUrl());
+            log.error("DEBUG - Está na aba Condições? {}", estaAbaCondicoes());
+
+            // Tentar fechar popup se estiver travado
+            try {
+                if (detectarPopupSweetAlert(2)) {
+                    log.warn("⚠ Popup ainda aberto após erro, tentando fechar...");
+                    fecharPopupSweetAlert();
+                }
+            } catch (Exception e2) {
+                log.debug("Não foi possível fechar popup no tratamento de erro");
+            }
+
+            throw new RuntimeException("Falha ao adicionar condição de recebimento", e);
+        }
+    }
+
+    /**
+     * Seleciona uma opção em um campo Select2 pelo texto (ESTRATÉGIA ROBUSTA)
+     * Método agnóstico ao jQuery - funciona mesmo se jQuery não estiver disponível
+     * 
+     * @param selectId   ID do select original (ex: "tipoPagamento")
+     * @param textoOpcao Texto visível da opção (ex: "Boleto")
+     */
+    private void selecionarCampoSelect2PorTexto(String selectId, String textoOpcao) {
+        try {
+            log.debug("Iniciando seleção Select2 para '{}': '{}'", selectId, textoOpcao);
+
+            // 1. Aguardar o select estar presente
+            By selectLocator = By.id(selectId);
+            WebElement selectElement = wait.until(ExpectedConditions.presenceOfElementLocated(selectLocator));
+
+            // 2. ESTRATÉGIA PRINCIPAL: Selecionar via JavaScript puro (SEM jQuery)
+            log.debug("Tentando seleção via JavaScript puro...");
+
+            String scriptSelecao = String.format(
+                    "var select = arguments[0];" +
+                            "var optionText = '%s';" +
+                            "var found = false;" +
+                            "for (var i = 0; i < select.options.length; i++) {" +
+                            "  var currentText = select.options[i].text.trim();" +
+                            "  if (currentText === optionText || currentText.indexOf(optionText) !== -1) {" +
+                            "    select.selectedIndex = i;" +
+                            "    found = true;" +
+                            "    break;" +
+                            "  }" +
+                            "}" +
+                            "if (!found) { return 'OPTION_NOT_FOUND'; }" +
+                            "return select.value;",
+                    textoOpcao.replace("'", "\\'"));
+
+            Object resultado = js.executeScript(scriptSelecao, selectElement);
+
+            if ("OPTION_NOT_FOUND".equals(resultado)) {
+                log.error("Opção '{}' não encontrada no select '{}'", textoOpcao, selectId);
+
+                // DEBUG: Listar opções disponíveis
+                String scriptListarOpcoes = "var select = arguments[0];" +
+                        "var opcoes = [];" +
+                        "for (var i = 0; i < select.options.length; i++) {" +
+                        "  opcoes.push(select.options[i].text);" +
+                        "}" +
+                        "return opcoes.join(' | ');";
+
+                String opcoesDisponiveis = (String) js.executeScript(scriptListarOpcoes, selectElement);
+                log.error("Opções disponíveis: {}", opcoesDisponiveis);
+
+                throw new RuntimeException("Opção não encontrada: " + textoOpcao);
+            }
+
+            log.debug("✓ Opção selecionada via JS puro. Valor: {}", resultado);
+
+            // 3. Disparar evento 'change' nativo (sem jQuery)
+            log.debug("Disparando evento 'change' nativo...");
+            String scriptChange = "var select = arguments[0];" +
+                    "var event = new Event('change', { bubbles: true });" +
+                    "select.dispatchEvent(event);";
+
+            js.executeScript(scriptChange, selectElement);
+
+            // 4. Tentar disparar eventos Select2 (se disponível, mas sem falhar se não
+            // estiver)
+            try {
+                log.debug("Tentando disparar eventos Select2...");
+                String scriptSelect2Events = "var select = arguments[0];" +
+                        "if (typeof jQuery !== 'undefined' && jQuery(select).data('select2')) {" +
+                        "  jQuery(select).trigger('change');" +
+                        "  return 'JQUERY_OK';" +
+                        "}" +
+                        "return 'JQUERY_NOT_AVAILABLE';";
+
+                String statusJQuery = (String) js.executeScript(scriptSelect2Events, selectElement);
+                log.debug("Status jQuery: {}", statusJQuery);
+
+            } catch (Exception e) {
+                log.debug("jQuery não disponível (normal): {}", e.getMessage());
+            }
+
+            // 5. Aguardar eventos processarem
+            Thread.sleep(500);
+
+            // 6. VALIDAÇÃO: Verificar se o texto foi selecionado no container visual do
+            // Select2
+            try {
+                String containerId = "s2id_" + selectId;
+                By spanChosenLocator = By.cssSelector("#" + containerId + " .select2-chosen");
+
+                WebElement spanChosen = driver.findElement(spanChosenLocator);
+                String textoExibido = spanChosen.getText();
+
+                log.debug("Texto exibido no Select2: '{}'", textoExibido);
+
+                if (textoExibido != null && textoExibido.contains(textoOpcao)) {
+                    log.debug("✓ Validação OK: Select2 exibindo '{}'", textoExibido);
+                } else if (textoExibido == null || textoExibido.trim().isEmpty()) {
+                    log.warn("⚠ AVISO: Span do Select2 está vazio, mas valor foi setado no select");
+                } else {
+                    log.warn("⚠ AVISO: Texto difere: esperado '{}', exibido '{}'", textoOpcao, textoExibido);
+                }
+
+            } catch (Exception e) {
+                log.debug("Não foi possível validar span do Select2 (normal para alguns casos)");
+            }
+
+            log.debug("✓ Seleção concluída para '{}'", selectId);
+
+        } catch (Exception e) {
+            log.error("Erro ao selecionar campo Select2 '{}': {}", selectId, e.getMessage());
+            throw new RuntimeException("Falha ao selecionar Select2: " + selectId, e);
+        }
+    }
+
+    /**
+     * Aguarda a condição ser adicionada à lista (campos limparem)
+     */
+    private void aguardarCondicaoSerAdicionada() {
+        try {
+            log.debug("Aguardando campo tipo pagamento limpar...");
+            wait.until(driver -> {
+                try {
+                    WebElement select = driver.findElement(campoTipoPagamentoSelect);
+                    String valor = select.getAttribute("value");
+                    return valor == null || valor.trim().isEmpty();
+                } catch (Exception e) {
+                    return false;
+                }
+            });
+            log.debug("✓ Campo tipo pagamento limpo (condição adicionada)");
+        } catch (Exception e) {
+            log.warn("Timeout ao aguardar confirmação de condição adicionada");
+        }
+    }
+
+    // ========================================================================
+    // SEÇÃO 9: GESTÃO DE POPUPS SWEETALERT2
+    // ========================================================================
+    /**
+     * Detecta se um popup SweetAlert2 está visível na tela
+     *
+     * @param timeoutSegundos Tempo máximo para aguardar o popup aparecer
+     * @return true se o popup está visível, false caso contrário
+     */
+    private boolean detectarPopupSweetAlert(int timeoutSegundos) {
+        try {
+            log.debug("Verificando se popup SweetAlert2 está presente...");
+
+            WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSegundos));
+            WebElement popup = shortWait.until(ExpectedConditions.visibilityOfElementLocated(swalPopup));
+
+            // Verificar se realmente está visível (display != none)
+            String display = popup.getCssValue("display");
+            boolean isVisible = !"none".equals(display);
+
+            if (isVisible) {
+                // Capturar título e mensagem para log
+                try {
+                    String titulo = driver.findElement(swalTitulo).getText();
+                    String mensagem = driver.findElement(swalMensagem).getText();
+                    log.info("✓ Popup SweetAlert2 detectado:");
+                    log.info("  - Título: '{}'", titulo);
+                    log.info("  - Mensagem: '{}'", mensagem);
+                } catch (Exception e) {
+                    log.debug("Não foi possível capturar textos do popup");
+                }
+            }
+
+            return isVisible;
+
+        } catch (Exception e) {
+            log.debug("Nenhum popup SweetAlert2 detectado");
+            return false;
+        }
+    }
+
+    /**
+     * Sobrecarga: detecta popup com timeout padrão de 3 segundos
+     */
+    private boolean detectarPopupSweetAlert() {
+        return detectarPopupSweetAlert(3);
+    }
+
+    /**
+     * Fecha o popup SweetAlert2 clicando no botão OK
+     *
+     * @throws RuntimeException se não conseguir fechar o popup
+     */
+    private void fecharPopupSweetAlert() {
+        try {
+            log.info("Fechando popup SweetAlert2...");
+
+            // Aguardar botão OK estar clicável
+            WebElement botaoOk = wait.until(ExpectedConditions.elementToBeClickable(swalBotaoOk));
+
+            // Estratégia 1: Click direto
+            boolean sucesso = false;
+            try {
+                botaoOk.click();
+                Thread.sleep(500);
+                sucesso = true;
+                log.debug("✓ Click direto no botão OK");
+            } catch (Exception e) {
+                log.debug("Click direto falhou: {}", e.getMessage());
+            }
+
+            // Estratégia 2: Click via JavaScript
+            if (!sucesso) {
+                try {
+                    js.executeScript("arguments[0].click();", botaoOk);
+                    Thread.sleep(500);
+                    sucesso = true;
+                    log.debug("✓ Click via JS no botão OK");
+                } catch (Exception e) {
+                    log.debug("Click JS falhou: {}", e.getMessage());
+                }
+            }
+
+            // Estratégia 3: Simular tecla ENTER
+            if (!sucesso) {
+                try {
+                    botaoOk.sendKeys(Keys.ENTER);
+                    Thread.sleep(500);
+                    sucesso = true;
+                    log.debug("✓ ENTER no botão OK");
+                } catch (Exception e) {
+                    log.debug("ENTER falhou: {}", e.getMessage());
+                }
+            }
+
+            if (!sucesso) {
+                throw new RuntimeException("Não foi possível clicar no botão OK do popup");
+            }
+
+            // Aguardar popup desaparecer
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(swalPopup));
+
+            log.info("✓ Popup fechado com sucesso");
+
+        } catch (Exception e) {
+            log.error("Erro ao fechar popup SweetAlert2: {}", e.getMessage());
+            throw new RuntimeException("Falha ao fechar popup", e);
+        }
+    }
+
+    /**
+     * Detecta e fecha popup SweetAlert2 (se presente) Método conveniente que
+     * combina detecção + fechamento
+     *
+     * @return true se popup foi detectado e fechado, false se não havia popup
+     */
+    private boolean detectarEFecharPopup() {
+        if (detectarPopupSweetAlert()) {
+            fecharPopupSweetAlert();
+            return true;
+        }
+        return false;
+    }
+
+    // ========================================================================
+    // SEÇÃO 10: UTILITÁRIOS
     // ========================================================================
     /**
      * Aguarda um número específico de segundos
@@ -1242,9 +2156,8 @@ public class ComercialPage {
         try {
             log.debug("Aguardando página carregar completamente");
 
-            wait.until((ExpectedCondition<Boolean>) wd
-                    -> js.executeScript("return document.readyState").equals("complete")
-            );
+            wait.until((ExpectedCondition<Boolean>) wd -> js.executeScript("return document.readyState")
+                    .equals("complete"));
 
             log.debug("Página carregada");
         } catch (Exception e) {
@@ -1283,15 +2196,14 @@ public class ComercialPage {
             String originalStyle = element.getAttribute("style");
             js.executeScript(
                     "arguments[0].setAttribute('style', 'border: 3px solid red; background: yellow;');",
-                    element
-            );
+                    element);
             Thread.sleep(300);
             js.executeScript(
                     "arguments[0].setAttribute('style', '" + (originalStyle != null ? originalStyle : "") + "');",
-                    element
-            );
+                    element);
         } catch (Exception e) {
             log.trace("Não foi possível destacar elemento");
         }
     }
+
 }
