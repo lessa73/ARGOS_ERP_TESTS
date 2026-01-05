@@ -3,6 +3,7 @@ package teste;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.WebDriver;
@@ -166,6 +167,16 @@ public class TestComercial {
 
             log.info("✓ Item adicionado OK\n");
 
+            // ETAPA 16: AUTORIZAR PROPOSTA
+            log.info("╔═══════════════════════════════════════╗");
+            log.info("║  ETAPA 16: Autorizar proposta         ║");
+            log.info("╚═══════════════════════════════════════╝");
+
+            comercialPage.autorizarProposta();
+                       
+            log.info("✓ Proposta autorizada OK\n");
+            
+
             log.info("╔═══════════════════════════════════════╗");
             log.info("║  ✅✅✅ TESTE CONCLUÍDO ✅✅✅     ║");
             log.info("╚═══════════════════════════════════════╝");
@@ -180,22 +191,20 @@ public class TestComercial {
         }
     }
 
-    /*
-     * @AfterEach
-     * public void tearDown() {
-     * if (driver != null) {
-     * try {
-     * log.info("Aguardando antes de fechar o browser (para visualização)");
-     * Thread.sleep(2000);
-     * } catch (InterruptedException e) {
-     * log.warn("Interrupção durante aguardo final");
-     * Thread.currentThread().interrupt();
-     * }
-     * 
-     * log.info("Fechando browser");
-     * driver.quit();
-     * log.info("Teardown concluído");
-     * }
-     * }
-     */
+    @AfterEach
+    public void tearDown() {
+        if (driver != null) {
+            try {
+                log.info("Aguardando antes de fechar o browser (para visualização)");
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                log.warn("Interrupção durante aguardo final");
+                Thread.currentThread().interrupt();
+            }
+            log.info("Fechando browser");
+            driver.quit();
+            log.info("Teardown concluído");
+        }
+    }
+
 }

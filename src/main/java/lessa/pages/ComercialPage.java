@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -28,14 +27,11 @@ import lessa.utils.Select2Helper;
  * @author Alexandre Lessa
  * @version 2.0
  */
-public class ComercialPage {
+public class ComercialPage extends BasePages {
 
     private static final Logger log = LoggerFactory.getLogger(ComercialPage.class);
 
     // ========== DEPENDÊNCIAS ==========
-    private final WebDriver driver;
-    private final WebDriverWait wait;
-    private final JavascriptExecutor js;
     private final Actions actions;
     private final AutocompleteHelper autocompleteHelper;
     private final Select2Helper select2Helper;
@@ -155,11 +151,11 @@ public class ComercialPage {
     private final By campoCondicaoPropostaContainer = By.id("s2id_idCondicao");
     private final By botaoOkCondicoesProposta = By.id("xinput834");
 
+    private final By popupMensagem = By.id("swal2-html-container");
+
     // ========== CONSTRUTOR ==========
     public ComercialPage(WebDriver driver) {
-        this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-        this.js = (JavascriptExecutor) driver;
+        super(driver);
         this.actions = new Actions(driver);
         this.autocompleteHelper = new AutocompleteHelper(driver);
         this.select2Helper = new Select2Helper(driver);
@@ -877,6 +873,246 @@ public class ComercialPage {
         log.debug("Voltou para contexto principal");
     }
 
+    private void aguardarTelaAssinaturaCarregar() {
+        log.info("PASSO 4: Aguardando tela de assinatura carregar");
+
+        try {
+            // Aguardar um pouco para o sistema processar o click
+            Thread.sleep(2000);
+
+            // ESTRATÉGIA 1: Verificar se abriu uma nova janela (popup)
+            if (detectarNovaJanela()) {
+                log.info("✓ Detectado: Sistema abriu POPUP");
+                trocarParaNovaJanela();
+
+                // Aguardar página carregar no popup
+                aguardarPaginaCarregar();
+
+                // Dentro do popup, verificar se tem iframe
+                log.info("Verificando se há iframe dentro do popup...");
+                if (detectarIframeDinamico()) {
+                    log.info("✓ Detectado: Iframe dentro do popup");
+                    trocarParaIframeAssinatura();
+                }
+            } // ESTRATÉGIA 2: Verificar se carregou em iframe na mesma janela
+            else if (detectarIframeDinamico()) {
+                log.info("✓ Detectado: Sistema carregou em IFRAME dinâmico");
+                trocarParaIframeAssinatura();
+            } // ESTRATÉGIA 3: Carregou na mesma página (sem popup/iframe)
+            else {
+                log.info("✓ Detectado: Sistema carregou na mesma página");
+            }
+
+            // VALIDAÇÃO CRÍTICA: Aguardar o campo estar presente
+            log.info("Aguardando campo 'senha' estar disponível...");
+
+            // Aumentar timeout para 30 segundos (ERP pode ser lento)
+            WebDriverWait longWait = new WebDriverWait(driver, Duration.ofSeconds(30));
+
+            WebElement campoSenhaElement = longWait.until(
+                    ExpectedConditions.presenceOfElementLocated(campoSenha));
+
+            log.debug("✓ Campo 'senha' encontrado no DOM");
+
+            // Aguardar estar visível
+            longWait.until(ExpectedConditions.visibilityOf(campoSenhaElement));
+            log.debug("✓ Campo 'senha' visível");
+
+            // Aguardar estar habilitado
+            longWait.until(ExpectedConditions.elementToBeClickable(campoSenhaElement));
+            log.debug("✓ Campo 'senha' habilitado");
+
+            log.info("✓ Tela de assinatura carregada com sucesso");
+
+        } catch (Exception e) {
+            log.error("❌ Erro ao aguardar tela de assinatura: {}", e.getMessage());
+
+            // DEBUG INTENSIVO
+            log.error("========== DEBUG DETALHADO ==========");
+            imprimirContextoAtual();
+            listarIframesNaPagina();
+
+            // Tentar voltar ao contexto principal e listar novamente
+            try {
+                log.debug("Tentando voltar ao contexto principal...");
+                driver.switchTo().defaultContent();
+                log.debug("✓ Voltou para contexto principal");
+
+                log.debug("Listando iframes após voltar ao contexto principal:");
+                listarIframesNaPagina();
+
+                // Tentar localizar o iframe novamente com informações extras
+                try {
+                    By locator = obterLocatorIframeDinamico();
+                    WebElement iframe = driver.findElement(locator);
+                    log.info("⚠ O IFRAME EXISTE mas não foi detectado automaticamente!");
+                    log.info("  Forçando troca para o iframe...");
+                    driver.switchTo().frame(iframe);
+                    aguardarPaginaCarregar();
+                    Thread.sleep(1000);
+                    log.info("✓ Troca forçada concluída");
+
+                    // Tentar localizar o campo novamente
+                    WebElement campo = driver.findElement(campoSenha);
+                    log.info("✓✓✓ CAMPO ENCONTRADO após troca forçada!");
+
+                } catch (Exception e3) {
+                    log.error("Campo não encontrado mesmo após troca forçada");
+                }
+
+            } catch (Exception e2) {
+                log.error("Não foi possível executar debug avançado: {}", e2.getMessage());
+            }
+
+            log.error("====================================");
+
+            throw new RuntimeException("Falha ao carregar tela de assinatura", e);
+        }
+    }
+
+    /**
+     * Troca para o iframe correto onde estão os campos do cadastro Lida com
+     * iframes aninhados (iframe dentro de iframe)
+     */
+    private void trocarParaIframeAssinatura() {
+        try {
+            log.info("========================================");
+            log.info("Iniciando busca por iframes aninhados...");
+            log.info("========================================");
+
+            // 1. Voltar para o contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Voltou para contexto principal (defaultContent)");
+
+            // 2. Identificar todos os iframes disponíveis no nível raiz
+            List<WebElement> iframesRaiz = driver.findElements(By.tagName("iframe"));
+            log.info("Total de iframes no nível raiz: {}", iframesRaiz.size());
+
+            // 3. Procurar pelo iframe que contém 'proposta.do'
+            WebElement iframeAssinatura = null;
+            boolean encontrouEmNivelRaiz = false;
+
+            // Tentar encontrar no nível raiz primeiro
+            for (int i = 0; i < iframesRaiz.size(); i++) {
+                WebElement iframe = iframesRaiz.get(i);
+                String src = iframe.getAttribute("src");
+                String id = iframe.getAttribute("id");
+                String name = iframe.getAttribute("name");
+
+                log.info("Iframe [{}] - src: {}, id: {}, name: {}", i, src, id, name);
+
+                if (src != null && src.contains("assinatura.do")) {
+                    log.info("✓ Iframe 'assinatura.do' encontrado no nível raiz!");
+                    iframeAssinatura = iframe;
+                    encontrouEmNivelRaiz = true;
+                    break;
+                }
+            }
+
+            // 4. Se não encontrou no nível raiz, procurar dentro de cada iframe (aninhado)
+            if (!encontrouEmNivelRaiz) {
+                log.warn("Iframe 'assinatura.do' NÃO encontrado no nível raiz");
+                log.info("Procurando em iframes aninhados...");
+
+                for (int i = 0; i < iframesRaiz.size(); i++) {
+                    try {
+                        // Entrar no iframe pai
+                        driver.switchTo().defaultContent();
+                        driver.switchTo().frame(iframesRaiz.get(i));
+
+                        log.info("Dentro do iframe [{}], procurando iframes aninhados...", i);
+
+                        // Aguardar um pouco para o conteúdo carregar
+                        Thread.sleep(1000);
+
+                        // Procurar iframes dentro deste iframe
+                        List<WebElement> iframesAninhados = driver.findElements(By.tagName("iframe"));
+                        log.info("  → Iframes aninhados encontrados: {}", iframesAninhados.size());
+
+                        for (int j = 0; j < iframesAninhados.size(); j++) {
+                            WebElement iframeAninhado = iframesAninhados.get(j);
+                            String src = iframeAninhado.getAttribute("src");
+                            String id = iframeAninhado.getAttribute("id");
+                            String name = iframeAninhado.getAttribute("name");
+
+                            log.info("  → Iframe aninhado [{}] - src: {}, id: {}, name: {}", j, src, id, name);
+
+                            if (src != null && src.contains("assinatura.do")) {
+                                log.info("✓✓✓ IFRAME 'assinatura.do' ENCONTRADO COMO ANINHADO! ✓✓✓");
+                                iframeAssinatura = iframeAninhado;
+                                break;
+                            }
+                        }
+
+                        if (iframeAssinatura != null) {
+                            break; // Encontrou, sair do loop
+                        }
+
+                    } catch (Exception e) {
+                        log.debug("Erro ao explorar iframe [{}]: {}", i, e.getMessage());
+                        driver.switchTo().defaultContent(); // Voltar ao contexto principal
+                    }
+                }
+            }
+
+            // 5. Validar se encontrou o iframe
+            if (iframeAssinatura == null) {
+                log.error("❌ IFRAME 'assinatura.do' NÃO ENCONTRADO!");
+                imprimirContextoAtual();
+                throw new RuntimeException("Não foi possível localizar o iframe da assinatura");
+            }
+
+            // 6. Entrar no iframe correto
+            log.info("Entrando no iframe 'assinatura.do'...");
+            driver.switchTo().frame(iframeAssinatura);
+            log.info("✓ Dentro do iframe 'assinatura.do'");
+
+            // 7. Aguardar conteúdo carregar
+            aguardarIframeCarregarComConteudo();
+
+            // 8. VALIDAÇÃO FINAL: Verificar se o campo prazoDias está presente
+            log.info("Validando presença do campo 'senha'...");
+            try {
+                WebDriverWait validacao = new WebDriverWait(driver, Duration.ofSeconds(10));
+                WebElement campoSenhaValidacao = validacao.until(
+                        ExpectedConditions.presenceOfElementLocated(By.id("password")));
+                log.info("✓✓✓ CAMPO 'senha' ENCONTRADO E PRONTO! ✓✓✓");
+
+                // Log de debug
+                log.debug("Campo - Visível: {}, Habilitado: {}",
+                        campoSenhaValidacao.isDisplayed(),
+                        campoSenhaValidacao.isEnabled());
+
+            } catch (Exception e) {
+                log.error("❌ Campo 'senha' NÃO encontrado mesmo após entrar no iframe!");
+                log.error("URL atual: {}", driver.getCurrentUrl());
+
+                // Listar todos os inputs disponíveis
+                List<WebElement> inputs = driver.findElements(By.tagName("input"));
+                log.error("Inputs disponíveis no iframe (total: {}):", inputs.size());
+                for (int i = 0; i < Math.min(inputs.size(), 10); i++) {
+                    WebElement input = inputs.get(i);
+                    log.error("  Input [{}] - id: {}, name: {}, type: {}",
+                            i,
+                            input.getAttribute("id"),
+                            input.getAttribute("name"),
+                            input.getAttribute("type"));
+                }
+
+                throw new RuntimeException("Campo 'senha' não encontrado após trocar para iframe", e);
+            }
+
+            log.info("========================================");
+            log.info("✓ Iframe configurado com sucesso!");
+            log.info("========================================");
+
+        } catch (Exception e) {
+            log.error("Erro fatal ao trocar para iframe: {}", e.getMessage(), e);
+            driver.switchTo().defaultContent();
+            throw new RuntimeException("Falha ao configurar iframe da proposta", e);
+        }
+    }
+
     // ========================================================================
     // SEÇÃO 4: DEBUG E DIAGNÓSTICO ✨
     // ========================================================================
@@ -930,9 +1166,9 @@ public class ComercialPage {
             try {
                 // Tentar obter URL do contexto atual
                 String urlContexto = driver.getCurrentUrl();
-                if (urlContexto.contains("proposta.do")) {
+                if (urlContexto.contains("assinatura.do")) {
                     estavaEmIframe = true;
-                    log.debug("⚠ Estava dentro do iframe proposta.do");
+                    log.debug("⚠ Estava dentro do iframe assinatura.do");
                 }
             } catch (Exception e) {
                 // Ignorar
@@ -1714,8 +1950,9 @@ public class ComercialPage {
             log.warn("Timeout ao aguardar confirmação de serviço adicionado");
         }
     }
+
     // ========================================================================
-    // SEÇÃO 8: GESTÃO DA ABA CONDIÇÕES (SELECT2) ✨ REFATORADO
+    // SEÇÃO 9: GESTÃO DA ABA CONDIÇÕES (SELECT2) ✨ REFATORADO
     // ========================================================================
 
     /**
@@ -2005,7 +2242,60 @@ public class ComercialPage {
     }
 
     // ========================================================================
-    // SEÇÃO 9: GESTÃO DE POPUPS SWEETALERT2
+    // SEÇÃO 10: AUTORIZAR PROPOSTA
+    // ========================================================================
+    /**
+     * Clica no botão Autorizar o sistema mudar o status da proposta
+     *
+     * @return Status Autorizado
+     */
+    public void autorizarProposta() {
+        try {
+            log.info("Clicando em Autorizar...");
+
+            // Aguardar botão estar clicável
+            WebElement botaoAutorizar = wait.until(ExpectedConditions
+                    .elementToBeClickable(By.xpath("//input[@type='submit' and @value='Autorizar']")));
+            botaoAutorizar.click();
+
+            log.info("✓ Botão Autorizar clicado");
+
+            log.info("Aguardando iframe de assinatura...");
+
+            WebElement iframeAssinatura = wait.until(
+            ExpectedConditions.presenceOfElementLocated(
+                By.xpath("//iframe[contains(@src,'assinatura.do')]")
+            )
+        );
+
+        driver.switchTo().frame(iframeAssinatura);
+        log.info("✓ Entrou no iframe de assinatura");
+
+            WebElement campoSenha = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(By.id("password")));
+            campoSenha.clear();
+            campoSenha.sendKeys("0");
+
+            log.info("✓ Senha preenchida");
+
+            // Clica no botão OK da janela
+            WebElement botaoOk = wait.until(
+                    ExpectedConditions.elementToBeClickable(By.xpath("//*[@actionbutton='btnOk']")));
+            botaoOk.click();
+
+            log.info("✓ Autorização confirmada");
+
+            driver.switchTo().defaultContent();
+
+        } catch (Exception e) {
+        driver.switchTo().defaultContent();
+        log.error("Erro ao autorizar proposta", e);
+        throw new RuntimeException(e);
+    }
+}
+
+    // ========================================================================
+    // SEÇÃO 11: GESTÃO DE POPUPS SWEETALERT2
     // ========================================================================
     /**
      * Detecta se um popup SweetAlert2 está visível na tela
@@ -2129,7 +2419,7 @@ public class ComercialPage {
     }
 
     // ========================================================================
-    // SEÇÃO 10: UTILITÁRIOS
+    // SEÇÃO 12: UTILITÁRIOS
     // ========================================================================
     /**
      * Aguarda um número específico de segundos
@@ -2146,43 +2436,6 @@ public class ComercialPage {
         } catch (InterruptedException e) {
             log.warn("Aguardo interrompido");
             Thread.currentThread().interrupt();
-        }
-    }
-
-    /**
-     * Aguarda a página carregar completamente
-     */
-    private void aguardarPaginaCarregar() {
-        try {
-            log.debug("Aguardando página carregar completamente");
-
-            wait.until((ExpectedCondition<Boolean>) wd -> js.executeScript("return document.readyState")
-                    .equals("complete"));
-
-            log.debug("Página carregada");
-        } catch (Exception e) {
-            log.warn("Timeout ao aguardar página carregar: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * Aguarda requisições AJAX completarem (jQuery)
-     */
-    private void aguardarAjaxCompletar() {
-        try {
-            log.debug("Aguardando AJAX completar");
-            WebDriverWait ajaxWait = new WebDriverWait(driver, Duration.ofSeconds(5));
-            ajaxWait.until(wd -> {
-                Boolean jQueryDefined = (Boolean) js.executeScript("return typeof jQuery != 'undefined'");
-                if (jQueryDefined) {
-                    Long activeConnections = (Long) js.executeScript("return jQuery.active");
-                    return activeConnections == 0;
-                }
-                return true;
-            });
-            log.debug("AJAX concluído");
-        } catch (Exception e) {
-            log.debug("Não foi possível verificar jQuery.active");
         }
     }
 

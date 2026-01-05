@@ -12,10 +12,20 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class BasePages {
+/**
+ * Classe base para todas as Pages
+ * Contém métodos utilitários comuns e gerenciamento de WebDriver
+ * 
+ * @author Alexandre Lessa
+ * @version 2.0
+ */
 
+public class BasePages {
+
+    // ========== LOGGER ==========
     private static final Logger log = LoggerFactory.getLogger(BasePages.class);
 
+    // ========== ATRIBUTOS PROTEGIDOS ==========
     protected WebDriver driver;
     protected WebDriverWait wait;
     protected WebDriverWait longWait;
@@ -26,7 +36,13 @@ public abstract class BasePages {
     private static final int TIMEOUT_LONGO = 30;
     private static final int TIMEOUT_AJAX = 10;
     private static final int POLLING_INTERVAL = 500; // ms
-    
+
+    // ========== CONSTRUTOR ==========
+    /**
+     * Construtor base que inicializa WebDriver, Wait e JavascriptExecutor
+     * 
+     * @param driver WebDriver a ser utilizado
+     */
     public BasePages(WebDriver driver) {
         this.driver = driver;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(TIMEOUT_PADRAO));
@@ -71,9 +87,8 @@ public abstract class BasePages {
         try {
             log.debug("Aguardando página carregar completamente");
 
-            wait.until((ExpectedCondition<Boolean>) wd
-                    -> js.executeScript("return document.readyState").equals("complete")
-            );
+            wait.until((ExpectedCondition<Boolean>) wd -> js.executeScript("return document.readyState")
+                    .equals("complete"));
 
             log.debug("Página carregada");
         } catch (Exception e) {
@@ -191,7 +206,7 @@ public abstract class BasePages {
      * Preenche um campo de texto
      *
      * @param locator Localizador do campo
-     * @param texto Texto a ser preenchido
+     * @param texto   Texto a ser preenchido
      */
     protected void preencherCampo(By locator, String texto) {
         WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
@@ -203,8 +218,8 @@ public abstract class BasePages {
     /**
      * Preenche campo caractere por caractere (útil para autocomplete)
      *
-     * @param locator Localizador do campo
-     * @param texto Texto a ser digitado
+     * @param locator              Localizador do campo
+     * @param texto                Texto a ser digitado
      * @param delayEntreCaracteres Delay em ms entre cada caractere
      */
     protected void digitarTextoDevagar(By locator, String texto, int delayEntreCaracteres) {
@@ -238,7 +253,7 @@ public abstract class BasePages {
     /**
      * Obtém o valor de um atributo
      *
-     * @param locator Localizador do elemento
+     * @param locator  Localizador do elemento
      * @param atributo Nome do atributo
      * @return Valor do atributo
      */
@@ -386,7 +401,7 @@ public abstract class BasePages {
      * Executa um script JavaScript
      *
      * @param script Script a ser executado
-     * @param args Argumentos do script
+     * @param args   Argumentos do script
      * @return Resultado da execução
      */
     protected Object executarJavaScript(String script, Object... args) {
@@ -396,7 +411,7 @@ public abstract class BasePages {
     /**
      * Remove atributo de um elemento via JavaScript
      *
-     * @param locator Localizador do elemento
+     * @param locator  Localizador do elemento
      * @param atributo Nome do atributo a remover
      */
     protected void removerAtributo(By locator, String atributo) {
@@ -408,9 +423,9 @@ public abstract class BasePages {
     /**
      * Define um atributo de um elemento via JavaScript
      *
-     * @param locator Localizador do elemento
+     * @param locator  Localizador do elemento
      * @param atributo Nome do atributo
-     * @param valor Valor do atributo
+     * @param valor    Valor do atributo
      */
     protected void definirAtributo(By locator, String atributo, String valor) {
         WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
