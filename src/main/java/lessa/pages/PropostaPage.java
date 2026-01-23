@@ -27,9 +27,9 @@ import lessa.utils.Select2Helper;
  * @author Alexandre Lessa
  * @version 2.0
  */
-public class ComercialPage extends BasePages {
+public class PropostaPage extends BasePages {
 
-    private static final Logger log = LoggerFactory.getLogger(ComercialPage.class);
+    private static final Logger log = LoggerFactory.getLogger(PropostaPage.class);
 
     // ========== DEPENDÊNCIAS ==========
     private final Actions actions;
@@ -74,11 +74,21 @@ public class ComercialPage extends BasePages {
         return By.xpath("//iframe[contains(@src, 'assinatura.do')]");
     }
 
+    // ========== LOCATORS - IFRAME DE CONDIÇÕES (NOVO) ==========
+    private final By iframeCondicoesProposta = By.xpath("//iframe[contains(@src, 'showCondicoesProposta=true')]");
+    // Locator mais robusto para o botão OK (não depende do ID específico)
+    private final By botaoOkCondicao = By.xpath("//input[@type='button' and @value='OK' and @onclick='closeWindow()']");
+
     // ========== LOCATORS – SWEETALERT2 (POPUP) ==========
     private final By swalPopup = By.cssSelector(".swal2-popup.swal2-show");
     private final By swalBotaoOk = By.cssSelector("button.swal2-confirm");
     private final By swalTitulo = By.id("swal2-title");
     private final By swalMensagem = By.id("swal2-html-container");
+
+    // ========== LOCATORS - SELECT2 CONDIÇÃO (NOVO) ==========
+    // ID do select original que o Select2 transforma
+    private final By campoCondicaoPropostaSelect = By.id("idCondicao"); // Ajuste se o ID for diferente
+    private final By campoCondicaoPropostaSpan = By.id("select2-chosen-1"); // Span que exibe o texto selecionado
 
     // ========== LOCATORS – CADASTRO DE PROPOSTA ==========
     private final By campoPrazo = By.id("prazoDias");
@@ -154,7 +164,7 @@ public class ComercialPage extends BasePages {
     private final By popupMensagem = By.id("swal2-html-container");
 
     // ========== CONSTRUTOR ==========
-    public ComercialPage(WebDriver driver) {
+    public PropostaPage(WebDriver driver) {
         super(driver);
         this.actions = new Actions(driver);
         this.autocompleteHelper = new AutocompleteHelper(driver);
@@ -2249,50 +2259,561 @@ public class ComercialPage extends BasePages {
      *
      * @return Status Autorizado
      */
-    public void autorizarProposta() {
+
+    public boolean autorizarProposta() {
         try {
-            log.info("Clicando em Autorizar...");
+            log.info("Preparando autorização da proposta...");
 
-            // Aguardar botão estar clicável
-            WebElement botaoAutorizar = wait.until(ExpectedConditions
-                    .elementToBeClickable(By.xpath("//input[@type='submit' and @value='Autorizar']")));
-            botaoAutorizar.click();
+            // PASSO 1: Garantir que está no iframe da proposta
+            try {
+                driver.switchTo().defaultContent();
+                trocarParaIframeProposta();
+                log.info("✓ Contexto configurado para iframe da proposta");
+            } catch (Exception e) {
+                log.warn("Não foi necessário trocar de iframe");
+            }
 
-            log.info("✓ Botão Autorizar clicado");
+            // PASSO 2: Localizar o botão Autorizar
+            WebElement botaoAutorizar = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(
+                            By.xpath("//input[@onclick='return authorize();' and @value='Autorizar']")));
+            log.info("✓ Botão Autorizar localizado");
 
-            log.info("Aguardando iframe de assinatura...");
+            // Scroll até o botão
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", botaoAutorizar);
+            Thread.sleep(500);
 
-            WebElement iframeAssinatura = wait.until(
-            ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//iframe[contains(@src,'assinatura.do')]")
-            )
-        );
+            // PASSO 3: Clicar no botão usando JavaScript
+            js.executeScript("arguments[0].click();", botaoAutorizar);
+            log.info("✓ Clique executado no botão Autorizar");
 
-        driver.switchTo().frame(iframeAssinatura);
-        log.info("✓ Entrou no iframe de assinatura");
+            // PASSO 4: Aguardar o iframe de assinatura carregar
+            log.info("Aguardando abertura da janela de assinatura...");
+            Thread.sleep(2000);
 
-            WebElement campoSenha = wait.until(
-                    ExpectedConditions.visibilityOfElementLocated(By.id("password")));
-            campoSenha.clear();
-            campoSenha.sendKeys("0");
-
-            log.info("✓ Senha preenchida");
-
-            // Clica no botão OK da janela
-            WebElement botaoOk = wait.until(
-                    ExpectedConditions.elementToBeClickable(By.xpath("//*[@actionbutton='btnOk']")));
-            botaoOk.click();
-
-            log.info("✓ Autorização confirmada");
-
+            // PASSO 5: Tentar detectar o iframe de assinatura
             driver.switchTo().defaultContent();
 
+            WebDriverWait iframeWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebElement iframeAssinatura = iframeWait.until(
+                    ExpectedConditions.presenceOfElementLocated(
+                            By.xpath("//iframe[contains(@src, 'assinatura.do')]")));
+
+            log.info("✓ Iframe de assinatura detectado!");
+            log.info("  - ID: {}", iframeAssinatura.getAttribute("id"));
+            log.info("  - Name: {}", iframeAssinatura.getAttribute("name"));
+            log.info("  - Src: {}", iframeAssinatura.getAttribute("src"));
+
+            return true;
+
         } catch (Exception e) {
-        driver.switchTo().defaultContent();
-        log.error("Erro ao autorizar proposta", e);
-        throw new RuntimeException(e);
+            log.error("❌ Erro ao autorizar proposta: {}", e.getMessage());
+
+            // DEBUG
+            log.error("DEBUG - URL atual: {}", driver.getCurrentUrl());
+            driver.switchTo().defaultContent();
+            listarIframesNaPagina();
+
+            throw new RuntimeException("Falha ao autorizar proposta", e);
+        }
     }
-}
+
+    public void preencherSenha(String senha) {
+        try {
+            log.info("Preparando para preencher senha...");
+
+            // PASSO 1: Voltar ao contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Voltou para contexto principal");
+
+            // PASSO 2: Localizar o iframe de assinatura
+            WebDriverWait iframeWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+            WebElement iframeAssinatura = iframeWait.until(
+                    ExpectedConditions.presenceOfElementLocated(
+                            By.xpath("//iframe[contains(@src, 'assinatura.do')]")));
+
+            log.info("✓ Iframe de assinatura localizado");
+            log.info("  - ID: {}", iframeAssinatura.getAttribute("id"));
+
+            // PASSO 3: Entrar no iframe
+            driver.switchTo().frame(iframeAssinatura);
+            log.info("✓ Foco trocado para iframe de assinatura");
+
+            // Aguardar conteúdo carregar
+            Thread.sleep(1500);
+
+            // PASSO 4: Aguardar e localizar campo de senha
+            WebElement campoDeSenha = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//input[@id='password' and @type='password']")));
+
+            log.info("✓ Campo de senha localizado");
+
+            // PASSO 5: Preencher senha
+            campoDeSenha.clear();
+            campoDeSenha.sendKeys(senha);
+            log.info("✓ Senha preenchida");
+
+            // Aguardar um pouco para estabilizar
+            Thread.sleep(500);
+
+            // PASSO 6: Localizar e clicar no botão OK
+            WebElement botaoOk = wait.until(
+                    ExpectedConditions.elementToBeClickable(
+                            By.xpath("//input[@id='btnOk' and @onclick='return signup();']")));
+
+            log.info("✓ Botão OK localizado");
+
+            // Clicar usando JavaScript para garantir
+            js.executeScript("arguments[0].click();", botaoOk);
+            log.info("✓ Botão OK clicado");
+
+            // PASSO 7: Aguardar processamento
+            Thread.sleep(2000);
+
+            // Voltar ao contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Voltou ao contexto principal após assinatura");
+
+        } catch (Exception e) {
+            log.error("❌ Erro ao preencher senha: {}", e.getMessage());
+
+            // DEBUG
+            driver.switchTo().defaultContent();
+            log.error("DEBUG - Total de iframes: {}",
+                    driver.findElements(By.tagName("iframe")).size());
+            listarIframesNaPagina();
+
+            throw new RuntimeException("Falha ao preencher senha", e);
+        }
+    }
+
+    /**
+     * Confirma a geração do Pedido de Venda no popup SweetAlert
+     * que aparece após autorizar a proposta
+     * O popup aparece dentro do iframe principal da proposta (src="proposta.do")
+     */
+    public void confirmarGeracaoPedido() {
+        try {
+            log.info("Aguardando popup de decisão aparecer...");
+
+            // PASSO 1: Voltar ao contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Voltou para contexto principal");
+
+            // Aguardar processamento da assinatura
+            Thread.sleep(3000);
+
+            // PASSO 2: Localizar o iframe principal da proposta (onde foi preenchida)
+            log.debug("Localizando iframe principal da proposta...");
+
+            // O iframe tem src="proposta.do" e width="1300"
+            By iframePropostaLocator = By.xpath("//iframe[contains(@src, 'proposta.do') and @width='1300']");
+
+            WebDriverWait iframeWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            WebElement iframeProposta = iframeWait.until(
+                    ExpectedConditions.presenceOfElementLocated(iframePropostaLocator));
+
+            String iframeId = iframeProposta.getAttribute("id");
+            String iframeSrc = iframeProposta.getAttribute("src");
+            log.info("✓ Iframe principal localizado");
+            log.debug("  - ID: {}", iframeId);
+            log.debug("  - Src: {}", iframeSrc);
+
+            // PASSO 3: Entrar no iframe da proposta
+            driver.switchTo().frame(iframeProposta);
+            log.info("✓ Foco trocado para iframe da proposta");
+
+            // Aguardar um pouco para o popup aparecer
+            Thread.sleep(1500);
+
+            // PASSO 4: Localizar o popup dentro do iframe
+            log.debug("Procurando popup dentro do iframe...");
+
+            WebDriverWait popupWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+            WebElement popup = popupWait.until(
+                    ExpectedConditions.visibilityOfElementLocated(swalPopup));
+
+            log.info("✓ Popup de decisão detectado no iframe!");
+
+            // PASSO 5: Ler informações do popup
+            try {
+                WebElement titulo = popup.findElement(swalTitulo);
+                WebElement mensagem = popup.findElement(swalMensagem);
+                log.info("  - Título: '{}'", titulo.getText());
+                log.info("  - Mensagem: '{}'", mensagem.getText());
+            } catch (Exception e) {
+                log.debug("Não foi possível ler textos do popup");
+            }
+
+            // PASSO 6: Localizar e clicar no botão OK
+            WebElement botaoOk = popup.findElement(swalBotaoOk);
+
+            // Aguardar estar clicável
+            popupWait.until(ExpectedConditions.elementToBeClickable(botaoOk));
+            log.info("✓ Botão OK localizado e clicável");
+
+            // Scroll até o botão (garantia)
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", botaoOk);
+            Thread.sleep(500);
+
+            // Clicar no botão OK
+            try {
+                log.debug("Tentando click normal...");
+                botaoOk.click();
+                log.info("✓ Click normal executado no botão OK");
+            } catch (Exception e) {
+                log.warn("Click normal falhou, usando JavaScript...");
+                js.executeScript("arguments[0].click();", botaoOk);
+                log.info("✓ Click via JavaScript executado no botão OK");
+            }
+
+            // PASSO 7: Aguardar o popup desaparecer
+            log.debug("Aguardando popup fechar...");
+            Thread.sleep(1500);
+
+            try {
+                popupWait.until(ExpectedConditions.invisibilityOfElementLocated(swalPopup));
+                log.info("✓ Popup fechado com sucesso");
+            } catch (Exception e) {
+                log.debug("Timeout ao aguardar popup sumir (pode ter fechado)");
+            }
+
+            // PASSO 8: IMPORTANTE - Permanecer no iframe da proposta
+            // NÃO voltar ao contexto principal ainda, pois o próximo passo
+            // (selecionar condição) também acontece em um iframe
+            log.info("✓ Geração de pedido confirmada");
+            log.debug("Permanecendo no contexto do iframe da proposta");
+
+            // Aguardar processamento
+            Thread.sleep(1500);
+
+        } catch (Exception e) {
+            log.error("❌ Erro ao confirmar geração de pedido: {}", e.getMessage());
+
+            // DEBUG
+            try {
+                driver.switchTo().defaultContent();
+                log.error("DEBUG - URL atual: {}", driver.getCurrentUrl());
+                log.error("DEBUG - Total de iframes: {}", driver.findElements(By.tagName("iframe")).size());
+
+                // Verificar se existe iframe com proposta.do
+                List<WebElement> iframesProposta = driver.findElements(
+                        By.xpath("//iframe[contains(@src, 'proposta.do')]"));
+                log.error("DEBUG - Iframes com 'proposta.do': {}", iframesProposta.size());
+
+            } catch (Exception ex) {
+                log.debug("Erro durante debug");
+            }
+
+            // Garantir que voltou ao contexto principal
+            driver.switchTo().defaultContent();
+
+            throw new RuntimeException("Falha ao confirmar geração de pedido", e);
+        }
+    }
+
+    /**
+     * Seleciona a condição da proposta no iframe que aparece
+     * após confirmar a geração do pedido
+     * 
+     * @param opcaoCondicao Texto da opção a ser selecionada (ex: "Boleto - 28
+     *                      dias")
+     *                      Se null ou vazio, seleciona a primeira opção disponível
+     */
+    public void selecionarCondicaoProposta(String opcaoCondicao) {
+        try {
+            log.info("Preparando para selecionar condição da proposta...");
+
+            // PASSO 1: Voltar ao contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Voltou para contexto principal");
+
+            // PASSO 2: Aguardar e localizar o iframe de condições
+            log.info("Aguardando iframe de condições aparecer...");
+            WebDriverWait iframeWait = new WebDriverWait(driver, Duration.ofSeconds(15));
+
+            // O iframe de condições tem src contendo "showCondicoesProposta=true"
+            WebElement iframe = iframeWait.until(
+                    ExpectedConditions.presenceOfElementLocated(iframeCondicoesProposta));
+
+            String iframeId = iframe.getAttribute("id");
+            String iframeSrc = iframe.getAttribute("src");
+            log.info("✓ Iframe de condições localizado");
+            log.debug("  - ID: {}", iframeId);
+            log.debug("  - Src: {}", iframeSrc);
+
+            // PASSO 3: Entrar no iframe
+            driver.switchTo().frame(iframe);
+            log.info("✓ Foco trocado para iframe de condições");
+
+            // Aguardar conteúdo carregar
+            aguardarPaginaCarregar();
+            Thread.sleep(1500);
+
+            // PASSO 4: Verificar se o select existe e tem opções
+            WebElement selectElement = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(campoCondicaoPropostaSelect));
+
+            log.debug("✓ Select localizado (ID: idCondicao)");
+
+            // Verificar opções disponíveis
+            List<WebElement> options = selectElement.findElements(By.tagName("option"));
+            log.info("Opções disponíveis no select: {}", options.size());
+
+            // Listar opções
+            for (int i = 0; i < options.size(); i++) {
+                WebElement opt = options.get(i);
+                String valor = opt.getAttribute("value");
+                String texto = opt.getText();
+                log.debug("  Opção [{}]: valor='{}', texto='{}'", i, valor, texto);
+            }
+
+            // PASSO 5: Usar Select2Helper para selecionar a condição
+            Select2Helper select2 = new Select2Helper(driver);
+
+            if (opcaoCondicao != null && !opcaoCondicao.trim().isEmpty()) {
+                log.info("Selecionando condição: '{}'", opcaoCondicao);
+
+                try {
+                    // Usar o ID correto: "idCondicao"
+                    select2.selecionarOpcao("idCondicao", opcaoCondicao);
+                    log.info("✓ Condição selecionada via Select2Helper");
+
+                } catch (Exception e) {
+                    log.warn("Select2Helper falhou, tentando método alternativo: {}", e.getMessage());
+                    selecionarCondicaoAlternativo(opcaoCondicao);
+                }
+
+            } else {
+                log.info("Nenhuma condição específica informada, selecionando primeira disponível");
+                selecionarPrimeiraCondicao();
+            }
+
+            log.info("✓ Condição selecionada com sucesso");
+
+            // PASSO 6: Aguardar um pouco para processar
+            Thread.sleep(1000);
+
+            // PASSO 7: Localizar e clicar no botão OK
+            log.info("Localizando botão OK...");
+
+            WebElement botaoOk = wait.until(
+                    ExpectedConditions.elementToBeClickable(botaoOkCondicao));
+
+            log.info("✓ Botão OK localizado");
+            log.debug("  - ID: {}", botaoOk.getAttribute("id"));
+            log.debug("  - Value: {}", botaoOk.getAttribute("value"));
+            log.debug("  - OnClick: {}", botaoOk.getAttribute("onclick"));
+
+            // Scroll até o botão
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", botaoOk);
+            Thread.sleep(500);
+
+            // Garantir que está visível e habilitado
+            if (!botaoOk.isDisplayed()) {
+                log.error("❌ Botão OK não está visível!");
+                throw new RuntimeException("Botão OK não visível");
+            }
+
+            if (!botaoOk.isEnabled()) {
+                log.error("❌ Botão OK não está habilitado!");
+                throw new RuntimeException("Botão OK não habilitado");
+            }
+
+            log.debug("Botão OK está visível e habilitado");
+
+            // ESTRATÉGIA 1: Click normal
+            boolean cliqueSucesso = false;
+            try {
+                log.debug("Tentativa 1: Click normal no botão OK");
+                botaoOk.click();
+                Thread.sleep(500);
+                cliqueSucesso = true;
+                log.info("✓ Botão OK clicado (click normal)");
+            } catch (Exception e) {
+                log.debug("Click normal falhou: {}", e.getMessage());
+            }
+
+            // ESTRATÉGIA 2: Click via JavaScript
+            if (!cliqueSucesso) {
+                try {
+                    log.debug("Tentativa 2: Click via JavaScript");
+                    js.executeScript("arguments[0].click();", botaoOk);
+                    Thread.sleep(500);
+                    cliqueSucesso = true;
+                    log.info("✓ Botão OK clicado (JavaScript)");
+                } catch (Exception e) {
+                    log.debug("Click JavaScript falhou: {}", e.getMessage());
+                }
+            }
+
+            // ESTRATÉGIA 3: Executar a função closeWindow() diretamente
+            if (!cliqueSucesso) {
+                try {
+                    log.debug("Tentativa 3: Executar closeWindow() via JavaScript");
+                    js.executeScript("closeWindow();");
+                    Thread.sleep(500);
+                    cliqueSucesso = true;
+                    log.info("✓ Função closeWindow() executada via JavaScript");
+                } catch (Exception e) {
+                    log.debug("Execução de closeWindow() falhou: {}", e.getMessage());
+                }
+            }
+
+            // ESTRATÉGIA 4: Simular tecla ENTER
+            if (!cliqueSucesso) {
+                try {
+                    log.debug("Tentativa 4: Simular tecla ENTER");
+                    botaoOk.sendKeys(Keys.ENTER);
+                    Thread.sleep(500);
+                    cliqueSucesso = true;
+                    log.info("✓ Tecla ENTER enviada ao botão OK");
+                } catch (Exception e) {
+                    log.debug("ENTER falhou: {}", e.getMessage());
+                }
+            }
+
+            if (!cliqueSucesso) {
+                log.error("❌ Nenhuma estratégia de clique funcionou!");
+                throw new RuntimeException("Não foi possível clicar no botão OK");
+            }
+
+            log.info("✓ Confirmação enviada com sucesso");
+
+            // PASSO 8: Aguardar o iframe fechar
+            Thread.sleep(1500);
+
+            // Voltar ao contexto principal
+            driver.switchTo().defaultContent();
+            log.info("✓ Condição selecionada e confirmada com sucesso");
+
+        } catch (Exception e) {
+            log.error("❌ Erro ao selecionar condição da proposta: {}", e.getMessage());
+
+            // DEBUG
+            driver.switchTo().defaultContent();
+            log.error("DEBUG - Total de iframes: {}",
+                    driver.findElements(By.tagName("iframe")).size());
+            listarIframesNaPagina();
+
+            throw new RuntimeException("Falha ao selecionar condição da proposta", e);
+        }
+    }
+
+    /**
+     * Sobrecarga: Seleciona a primeira condição disponível
+     */
+    public void selecionarCondicaoProposta() {
+        selecionarCondicaoProposta(null);
+    }
+
+    /**
+     * Método auxiliar: Seleciona condição usando método alternativo
+     * (quando Select2Helper falha)
+     */
+    private void selecionarCondicaoAlternativo(String textoOpcao) throws InterruptedException {
+        log.info("Usando método alternativo para selecionar: '{}'", textoOpcao);
+
+        try {
+            // PASSO 1: Clicar no container do Select2 para abrir
+            WebElement container = wait.until(
+                    ExpectedConditions.elementToBeClickable(campoCondicaoPropostaContainer));
+
+            log.debug("Container localizado: {}", container.getAttribute("id"));
+
+            // Scroll e click
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", container);
+            Thread.sleep(300);
+
+            container.click();
+            log.debug("✓ Container clicado - dropdown deve abrir");
+            Thread.sleep(1000);
+
+            // PASSO 2: Localizar a opção pelo texto
+            // O Select2 cria divs com classe "select2-result-label"
+            String xpathOpcao = String.format(
+                    "//div[@class='select2-result-label' and contains(text(), '%s')]",
+                    textoOpcao);
+
+            log.debug("Procurando opção com XPath: {}", xpathOpcao);
+
+            WebElement opcao = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(By.xpath(xpathOpcao)));
+
+            log.debug("✓ Opção localizada: '{}'", opcao.getText());
+
+            // Scroll até a opção
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", opcao);
+            Thread.sleep(300);
+
+            // PASSO 3: Clicar na opção
+            try {
+                opcao.click();
+                log.info("✓ Opção '{}' selecionada (click normal)", textoOpcao);
+            } catch (Exception e) {
+                log.debug("Click normal falhou, usando JavaScript");
+                js.executeScript("arguments[0].click();", opcao);
+                log.info("✓ Opção '{}' selecionada (JavaScript)", textoOpcao);
+            }
+
+            Thread.sleep(800);
+
+            // PASSO 4: Validar seleção
+            WebElement spanSelecionado = driver.findElement(campoCondicaoPropostaSpan);
+            String textoSelecionado = spanSelecionado.getText();
+            log.debug("Texto exibido no Select2: '{}'", textoSelecionado);
+
+            if (textoSelecionado.contains(textoOpcao)) {
+                log.info("✓ Validação OK: condição selecionada corretamente");
+            } else {
+                log.warn("⚠ AVISO: Texto selecionado difere do esperado");
+            }
+
+        } catch (Exception e) {
+            log.error("Erro no método alternativo: {}", e.getMessage());
+            throw e;
+        }
+    }
+
+    /**
+     * Método auxiliar: Seleciona a primeira condição quando nenhuma foi
+     * especificada
+     */
+    private void selecionarPrimeiraCondicao() throws InterruptedException {
+        log.info("Selecionando primeira condição disponível...");
+
+        try {
+            // Abrir o dropdown clicando no container
+            WebElement container = wait.until(
+                    ExpectedConditions.elementToBeClickable(campoCondicaoPropostaContainer));
+
+            js.executeScript("arguments[0].scrollIntoView({block: 'center'});", container);
+            Thread.sleep(300);
+
+            container.click();
+            log.debug("✓ Dropdown aberto");
+            Thread.sleep(800);
+
+            // Localizar primeira opção disponível
+            WebElement primeiraOpcao = wait.until(
+                    ExpectedConditions.presenceOfElementLocated(
+                            By.cssSelector(".select2-result-label")));
+
+            String textoOpcao = primeiraOpcao.getText();
+            log.info("Primeira opção encontrada: '{}'", textoOpcao);
+
+            // Clicar na primeira opção
+            primeiraOpcao.click();
+            log.info("✓ Primeira opção selecionada: '{}'", textoOpcao);
+
+            Thread.sleep(1000);
+
+        } catch (Exception e) {
+            log.error("Erro ao selecionar primeira condição", e);
+            throw e;
+        }
+    }
 
     // ========================================================================
     // SEÇÃO 11: GESTÃO DE POPUPS SWEETALERT2
@@ -2305,14 +2826,15 @@ public class ComercialPage extends BasePages {
      */
     private boolean detectarPopupSweetAlert(int timeoutSegundos) {
         try {
-            log.debug("Verificando se popup SweetAlert2 está presente...");
+            log.debug("Verificando se popup SweetAlert2 está presente (timeout: {} segundos)...", timeoutSegundos);
 
             WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSegundos));
+            // Aguardar o popup estar presente E visível
             WebElement popup = shortWait.until(ExpectedConditions.visibilityOfElementLocated(swalPopup));
 
             // Verificar se realmente está visível (display != none)
             String display = popup.getCssValue("display");
-            boolean isVisible = !"none".equals(display);
+            boolean isVisible = !"none".equals(display) && popup.isDisplayed();
 
             if (isVisible) {
                 // Capturar título e mensagem para log
@@ -2324,6 +2846,16 @@ public class ComercialPage extends BasePages {
                     log.info("  - Mensagem: '{}'", mensagem);
                 } catch (Exception e) {
                     log.debug("Não foi possível capturar textos do popup");
+
+                    // Fallback: tentar pegar texto completo
+                    try {
+                        String textoCompleto = popup.getText();
+                        if (textoCompleto != null && !textoCompleto.trim().isEmpty()) {
+                            log.info("  - Conteúdo: '{}'", textoCompleto.replaceAll("\\s+", " ").trim());
+                        }
+                    } catch (Exception e2) {
+                        log.debug("Também não conseguiu ler texto completo");
+                    }
                 }
             }
 

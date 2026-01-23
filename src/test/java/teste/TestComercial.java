@@ -12,7 +12,7 @@ import org.openqa.selenium.firefox.FirefoxOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import lessa.pages.ComercialPage;
+import lessa.pages.PropostaPage;
 
 public class TestComercial {
 
@@ -23,7 +23,7 @@ public class TestComercial {
     private static final String SENHA_DEFAULT = "0";
 
     private WebDriver driver;
-    private ComercialPage comercialPage;
+    private PropostaPage comercialPage;
 
     @BeforeEach
     public void setUp() {
@@ -31,7 +31,7 @@ public class TestComercial {
         FirefoxOptions options = new FirefoxOptions();
         driver = new FirefoxDriver(options);
         driver.manage().window().maximize();
-        comercialPage = new ComercialPage(driver);
+        comercialPage = new PropostaPage(driver);
         log.info("Setup concluído");
     }
 
@@ -167,15 +167,62 @@ public class TestComercial {
 
             log.info("✓ Item adicionado OK\n");
 
+            /*
+             * // ETAPA 16: AUTORIZAR PROPOSTA
+             * log.info("╔═══════════════════════════════════════╗");
+             * log.info("║  ETAPA 16: Autorizar proposta         ║");
+             * log.info("╚═══════════════════════════════════════╝");
+             * 
+             * // Clicar no botão Autorizar
+             * boolean janelaAbriu = comercialPage.autorizarProposta();
+             * 
+             * if (janelaAbriu) {
+             * log.info("✓ Janela de assinatura aberta");
+             * 
+             * // PREENCHER A SENHA
+             * comercialPage.preencherSenha("0");
+             * 
+             * log.info("✓ Proposta autorizada com sucesso\n");
+             * } else {
+             * log.error("❌ Falha ao abrir janela de assinatura");
+             * throw new RuntimeException("Autorização não concluída");
+             * }
+             */
+
             // ETAPA 16: AUTORIZAR PROPOSTA
             log.info("╔═══════════════════════════════════════╗");
             log.info("║  ETAPA 16: Autorizar proposta         ║");
             log.info("╚═══════════════════════════════════════╝");
 
-            comercialPage.autorizarProposta();
-                       
-            log.info("✓ Proposta autorizada OK\n");
-            
+            // Passo 1: Clicar no botão Autorizar
+            boolean janelaAbriu = comercialPage.autorizarProposta();
+
+            if (janelaAbriu) {
+                log.info("✓ Janela de assinatura aberta");
+
+                // Passo 2: Preencher senha e confirmar
+                comercialPage.preencherSenha("0");
+                log.info("✓ Senha preenchida e confirmada");
+
+                // Passo 3: Confirmar geração do Pedido de Venda no popup
+                comercialPage.confirmarGeracaoPedido();
+                log.info("✓ Geração de pedido confirmada");
+
+                // Passo 4: Selecionar condição da proposta
+
+                // OPÇÃO 1: Selecionar condição específica
+                comercialPage.selecionarCondicaoProposta("Boleto - 28 dias");
+
+                // OPÇÃO 2: Selecionar a primeira condição disponível
+                // comercialPage.selecionarCondicaoProposta();
+
+                log.info("✓ Condição da proposta selecionada");
+                log.info("✓ Proposta autorizada com sucesso!\n");
+
+            } else {
+                log.error("❌ Falha ao abrir janela de assinatura");
+                throw new RuntimeException("Autorização não concluída");
+            }
 
             log.info("╔═══════════════════════════════════════╗");
             log.info("║  ✅✅✅ TESTE CONCLUÍDO ✅✅✅     ║");
